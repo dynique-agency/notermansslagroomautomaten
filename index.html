@@ -10,33 +10,37 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,600&family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet">
 
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js" defer></script>
+  <!-- Lenis smooth scroll -->
+  <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.33/dist/lenis.min.js" defer></script>
+
   <style>
-    /* ─── Reset & Base ─────────────────────────────────────── */
+    /* ─── Reset & Base ─── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; font-size: 16px; }
+    html { font-size: 16px; }
 
     :root {
       --bg:          #0a0a08;
-      --bg-2:        #111110;
+      --bg-2:        #0f0f0d;
+      --bg-3:        #141412;
       --cream:       #f2ece0;
-      --cream-dim:   #c8bfaa;
+      --cream-dim:   #a09882;
       --gold:        #c09a52;
       --gold-light:  #dbb978;
+      --gold-dim:    rgba(192,154,82,.15);
       --white:       #ffffff;
-      --border:      rgba(242,236,224,.08);
-      --border-gold: rgba(192,154,82,.3);
-
-      --ff-display: 'Cormorant Garamond', Georgia, serif;
-      --ff-body:    'Inter', -apple-system, sans-serif;
-
-      --ease-expo: cubic-bezier(0.19, 1, 0.22, 1);
-      --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+      --border:      rgba(242,236,224,.07);
+      --border-gold: rgba(192,154,82,.28);
+      --ff-d: 'Cormorant Garamond', Georgia, serif;
+      --ff-b: 'Inter', -apple-system, sans-serif;
     }
 
     body {
       background: var(--bg);
       color: var(--cream);
-      font-family: var(--ff-body);
+      font-family: var(--ff-b);
       font-weight: 300;
       overflow-x: hidden;
       cursor: none;
@@ -44,1568 +48,1654 @@
 
     ::selection { background: var(--gold); color: var(--bg); }
 
-    /* ─── Cursor ────────────────────────────────────────────── */
-    #cursor-dot {
-      position: fixed;
-      width: 6px; height: 6px;
-      background: var(--gold);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 9999;
-      transform: translate(-50%, -50%);
-      transition: width .15s, height .15s, background .15s;
+    /* ─── Progress bar ─── */
+    #progress {
+      position: fixed; top: 0; left: 0; z-index: 9997;
+      height: 2px; width: 0%;
+      background: linear-gradient(90deg, var(--gold), var(--gold-light));
+      transition: width .1s linear;
+      transform-origin: left;
+      box-shadow: 0 0 12px rgba(192,154,82,.6);
     }
-    #cursor-ring {
-      position: fixed;
-      width: 36px; height: 36px;
-      border: 1px solid rgba(192,154,82,.5);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 9998;
-      transform: translate(-50%, -50%);
-      transition: transform .08s var(--ease-smooth), width .3s var(--ease-expo), height .3s var(--ease-expo), border-color .3s;
-    }
-    body.cursor-hover #cursor-dot { width: 10px; height: 10px; background: var(--gold-light); }
-    body.cursor-hover #cursor-ring { width: 60px; height: 60px; border-color: var(--gold); }
 
-    /* ─── Preloader ─────────────────────────────────────────── */
+    /* ─── Film grain ─── */
+    .grain {
+      position: fixed; inset: 0; pointer-events: none; z-index: 9988;
+      opacity: .055; mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 250px 250px;
+      animation: grain-shift .35s steps(3) infinite;
+    }
+    @keyframes grain-shift {
+      0%   { background-position:   0%   0%; }
+      33%  { background-position:  60%  40%; }
+      66%  { background-position:  30%  80%; }
+      100% { background-position:  80%  15%; }
+    }
+
+    /* ─── Preloader ─── */
     #preloader {
-      position: fixed; inset: 0;
+      position: fixed; inset: 0; z-index: 9500;
       background: var(--bg);
-      z-index: 9000;
-      display: flex; align-items: center; justify-content: center;
-      transition: opacity .8s var(--ease-expo), visibility .8s;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 2rem;
+      transition: opacity .9s cubic-bezier(0.19,1,0.22,1),
+                  visibility .9s;
     }
-    #preloader.done { opacity: 0; visibility: hidden; }
+    #preloader.out { opacity: 0; visibility: hidden; }
 
-    .preloader-logo {
-      font-family: var(--ff-display);
-      font-size: clamp(2rem, 8vw, 5rem);
-      font-weight: 300;
-      letter-spacing: .5em;
-      color: var(--cream);
-      text-transform: uppercase;
-      overflow: hidden;
+    .pre-logo {
+      font-family: var(--ff-d); font-size: clamp(1.5rem,5vw,3rem);
+      font-weight: 300; letter-spacing: .6em; text-transform: uppercase;
+      color: var(--cream); overflow: hidden; display: flex;
     }
-    .preloader-logo span {
+    .pre-logo .pl-char {
       display: inline-block;
-      animation: preloader-slide-up .9s var(--ease-expo) forwards;
-      opacity: 0;
-      transform: translateY(100%);
+      transform: translateY(120%); opacity: 0;
+      animation: pl-rise .7s cubic-bezier(0.19,1,0.22,1) forwards;
     }
-    .preloader-bar {
-      position: absolute;
-      bottom: 0; left: 0;
-      height: 2px;
+    @keyframes pl-rise { to { transform: translateY(0); opacity: 1; } }
+
+    .pre-bar-wrap {
+      width: 220px; height: 1px;
+      background: rgba(242,236,224,.1); overflow: hidden;
+    }
+    .pre-bar {
+      height: 100%; width: 0;
       background: var(--gold);
-      width: 0;
-      animation: preloader-bar 1.4s var(--ease-expo) forwards;
+      animation: pl-bar 1.6s cubic-bezier(0.19,1,0.22,1) forwards;
     }
-    @keyframes preloader-slide-up {
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes preloader-bar {
-      to { width: 100%; }
+    @keyframes pl-bar { to { width: 100%; } }
+
+    .pre-count {
+      font-size: .6rem; letter-spacing: .3em;
+      text-transform: uppercase; color: var(--gold);
     }
 
-    /* ─── Navigation ────────────────────────────────────────── */
-    nav {
-      position: fixed; top: 0; left: 0; right: 0;
-      z-index: 500;
+    /* ─── Cursor ─── */
+    #cur-dot {
+      position: fixed; z-index: 9999; pointer-events: none;
+      width: 7px; height: 7px; background: var(--gold);
+      border-radius: 50%; transform: translate(-50%,-50%);
+      transition: width .2s, height .2s, background .2s, opacity .2s;
+    }
+    #cur-ring {
+      position: fixed; z-index: 9998; pointer-events: none;
+      width: 38px; height: 38px;
+      border: 1px solid rgba(192,154,82,.45);
+      border-radius: 50%; transform: translate(-50%,-50%);
+      transition: width .4s cubic-bezier(0.19,1,0.22,1),
+                  height .4s cubic-bezier(0.19,1,0.22,1),
+                  border-color .3s, border-width .3s;
+    }
+    #cur-label {
+      position: fixed; z-index: 9997; pointer-events: none;
+      font-size: .55rem; letter-spacing: .2em; text-transform: uppercase;
+      color: var(--bg); background: var(--gold);
+      padding: .3rem .7rem; white-space: nowrap;
+      transform: translate(14px, -50%); opacity: 0;
+      transition: opacity .25s;
+    }
+    body.ch #cur-dot  { width: 12px; height: 12px; }
+    body.ch #cur-ring { width: 64px; height: 64px; border-color: var(--gold); border-width: 1.5px; }
+    body.ch #cur-label { opacity: 1; }
+    body.cv #cur-dot  { width: 50px; height: 50px; background: rgba(192,154,82,.15);
+                        border: 1px solid rgba(192,154,82,.5); }
+    body.cv #cur-ring { width: 0; height: 0; opacity: 0; }
+
+    /* ─── Navigation ─── */
+    nav#nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 500;
       display: flex; align-items: center; justify-content: space-between;
       padding: 2rem 3rem;
-      transition: background .5s var(--ease-smooth), padding .5s var(--ease-smooth);
+      transition: padding .5s cubic-bezier(0.19,1,0.22,1),
+                  background .5s, backdrop-filter .5s;
     }
-    nav.scrolled {
-      background: rgba(10,10,8,.92);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      padding: 1.2rem 3rem;
+    nav#nav.stuck {
+      background: rgba(10,10,8,.88);
+      backdrop-filter: blur(18px) saturate(1.4);
+      -webkit-backdrop-filter: blur(18px) saturate(1.4);
+      padding: 1.1rem 3rem;
       border-bottom: 1px solid var(--border);
     }
 
     .nav-logo {
-      font-family: var(--ff-display);
-      font-size: 1.25rem;
-      font-weight: 400;
-      letter-spacing: .25em;
-      text-transform: uppercase;
-      color: var(--cream);
-      text-decoration: none;
+      font-family: var(--ff-d); font-size: 1.2rem; font-weight: 400;
+      letter-spacing: .28em; text-transform: uppercase;
+      color: var(--cream); text-decoration: none; z-index: 502;
     }
     .nav-logo em { font-style: italic; color: var(--gold); }
 
-    .nav-links {
-      display: flex; gap: 2.5rem;
-      list-style: none;
-    }
+    .nav-links { display: flex; gap: 2.5rem; list-style: none; }
     .nav-links a {
-      font-size: .7rem;
-      font-weight: 400;
-      letter-spacing: .2em;
-      text-transform: uppercase;
-      color: var(--cream-dim);
-      text-decoration: none;
-      transition: color .3s;
-      position: relative;
+      font-size: .65rem; font-weight: 400; letter-spacing: .22em;
+      text-transform: uppercase; color: var(--cream-dim); text-decoration: none;
+      transition: color .3s; position: relative;
     }
     .nav-links a::after {
-      content: '';
-      position: absolute;
-      bottom: -3px; left: 0; right: 100%;
-      height: 1px;
-      background: var(--gold);
-      transition: right .4s var(--ease-expo);
+      content: ''; position: absolute; bottom: -3px; left: 0; right: 100%;
+      height: 1px; background: var(--gold);
+      transition: right .4s cubic-bezier(0.19,1,0.22,1);
     }
     .nav-links a:hover { color: var(--cream); }
     .nav-links a:hover::after { right: 0; }
 
     .nav-cta {
-      font-size: .65rem;
-      font-weight: 400;
-      letter-spacing: .2em;
-      text-transform: uppercase;
-      color: var(--bg);
-      background: var(--gold);
-      padding: .6rem 1.4rem;
-      text-decoration: none;
-      transition: background .3s, transform .3s;
+      font-size: .62rem; font-weight: 400; letter-spacing: .22em;
+      text-transform: uppercase; color: var(--bg); background: var(--gold);
+      padding: .65rem 1.5rem; text-decoration: none;
+      transition: background .3s; position: relative; overflow: hidden;
     }
-    .nav-cta:hover { background: var(--gold-light); transform: translateY(-1px); }
+    .nav-cta::before {
+      content: ''; position: absolute; inset: 0;
+      background: var(--gold-light); transform: translateX(-100%);
+      transition: transform .4s cubic-bezier(0.19,1,0.22,1);
+    }
+    .nav-cta:hover::before { transform: translateX(0); }
+    .nav-cta span { position: relative; z-index: 1; }
 
-    /* ─── Hero ──────────────────────────────────────────────── */
+    /* Hamburger */
+    .nav-burger {
+      display: none; flex-direction: column; gap: 5px;
+      cursor: none; z-index: 502; padding: .5rem;
+    }
+    .nav-burger span {
+      display: block; width: 24px; height: 1px; background: var(--cream);
+      transition: transform .4s cubic-bezier(0.19,1,0.22,1), opacity .3s;
+      transform-origin: center;
+    }
+    .nav-burger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+    .nav-burger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .nav-burger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+    /* Mobile menu overlay */
+    #mobile-menu {
+      position: fixed; inset: 0; z-index: 490;
+      background: var(--bg); display: flex;
+      flex-direction: column; justify-content: center; align-items: flex-start;
+      padding: 3rem;
+      clip-path: inset(0 0 100% 0);
+      transition: clip-path .7s cubic-bezier(0.19,1,0.22,1);
+    }
+    #mobile-menu.open { clip-path: inset(0 0 0% 0); }
+
+    .mob-links { list-style: none; display: flex; flex-direction: column; gap: 1rem; }
+    .mob-links a {
+      font-family: var(--ff-d); font-size: clamp(2rem,7vw,3.5rem);
+      font-weight: 300; letter-spacing: -.02em; color: var(--cream);
+      text-decoration: none; transition: color .3s;
+      transform: translateX(-40px); opacity: 0;
+      transition: transform .5s cubic-bezier(0.19,1,0.22,1), opacity .5s, color .3s;
+    }
+    #mobile-menu.open .mob-links a { transform: translateX(0); opacity: 1; }
+    #mobile-menu.open .mob-links li:nth-child(1) a { transition-delay: .1s; }
+    #mobile-menu.open .mob-links li:nth-child(2) a { transition-delay: .17s; }
+    #mobile-menu.open .mob-links li:nth-child(3) a { transition-delay: .24s; }
+    #mobile-menu.open .mob-links li:nth-child(4) a { transition-delay: .31s; }
+    #mobile-menu.open .mob-links li:nth-child(5) a { transition-delay: .38s; }
+    .mob-links a:hover { color: var(--gold); }
+
+    .mob-footer {
+      margin-top: 3rem; font-size: .75rem; color: var(--cream-dim);
+      opacity: 0; transition: opacity .5s .45s;
+    }
+    #mobile-menu.open .mob-footer { opacity: 1; }
+
+    /* ─── Section dots ─── */
+    #section-dots {
+      position: fixed; right: 2rem; top: 50%;
+      transform: translateY(-50%); z-index: 100;
+      display: flex; flex-direction: column; gap: .9rem;
+    }
+    .sd {
+      width: 5px; height: 5px;
+      background: rgba(242,236,224,.2);
+      border-radius: 50%; text-decoration: none;
+      transition: background .3s, transform .3s, height .4s cubic-bezier(0.19,1,0.22,1);
+      display: block;
+    }
+    .sd.active { background: var(--gold); height: 18px; border-radius: 3px; }
+    .sd:hover   { background: var(--gold-light); transform: scale(1.3); }
+
+    /* ─── Hero ─── */
     #hero {
-      position: relative;
-      height: 100vh;
-      min-height: 700px;
-      overflow: hidden;
-      display: flex; align-items: flex-end;
+      position: relative; height: 100vh; min-height: 680px;
+      overflow: hidden; display: flex; align-items: flex-end;
     }
 
-    #hero-video {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
-      object-fit: cover;
-      transform: scale(1.05);
-      animation: hero-zoom 12s var(--ease-expo) forwards;
-    }
-    @keyframes hero-zoom {
-      to { transform: scale(1); }
+    #hero-vid {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; transform-origin: center;
+      will-change: transform;
     }
 
     .hero-overlay {
       position: absolute; inset: 0;
       background: linear-gradient(
-        to bottom,
-        rgba(10,10,8,.2) 0%,
-        rgba(10,10,8,.1) 40%,
-        rgba(10,10,8,.6) 70%,
-        rgba(10,10,8,.95) 100%
+        165deg,
+        rgba(10,10,8,.08) 0%,
+        rgba(10,10,8,.18) 35%,
+        rgba(10,10,8,.55) 65%,
+        rgba(10,10,8,.97) 100%
       );
+    }
+    /* vignette edges */
+    .hero-overlay::after {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(10,10,8,.7) 100%);
     }
 
     .hero-content {
-      position: relative;
-      z-index: 2;
-      width: 100%;
-      padding: 0 3rem 5rem;
+      position: relative; z-index: 2; width: 100%;
+      padding: 0 3rem 4.5rem;
       display: flex; align-items: flex-end; justify-content: space-between;
     }
 
     .hero-title {
-      font-family: var(--ff-display);
-      font-size: clamp(4.5rem, 12vw, 11rem);
-      font-weight: 300;
-      line-height: .92;
-      text-transform: uppercase;
-      letter-spacing: -.02em;
+      font-family: var(--ff-d);
+      font-size: clamp(4rem, 11vw, 10.5rem);
+      font-weight: 300; line-height: .9;
+      text-transform: uppercase; letter-spacing: -.025em;
     }
-    .hero-title .line {
-      display: block;
-      overflow: hidden;
-    }
-    .hero-title .line span {
-      display: block;
-      transform: translateY(110%);
-      opacity: 0;
-      animation: slide-up .9s var(--ease-expo) forwards;
-    }
-    .hero-title .line:nth-child(1) span { animation-delay: .2s; }
-    .hero-title .line:nth-child(2) span { animation-delay: .35s; }
-    .hero-title .line:nth-child(3) span { animation-delay: .5s; color: var(--gold); font-style: italic; }
-
-    @keyframes slide-up {
-      to { transform: translateY(0); opacity: 1; }
-    }
-
-    .hero-meta {
-      display: flex; flex-direction: column; align-items: flex-end; gap: 1.5rem;
-      animation: fade-in .8s var(--ease-expo) .7s forwards;
+    .hero-title .hl { display: block; overflow: hidden; }
+    .hero-title .hl span {
+      display: block; transform: translateY(115%);
+      animation: hero-rise .95s cubic-bezier(0.19,1,0.22,1) forwards;
       opacity: 0;
     }
-    @keyframes fade-in {
-      to { opacity: 1; }
+    .hero-title .hl:nth-child(1) span { animation-delay: .15s; }
+    .hero-title .hl:nth-child(2) span { animation-delay: .28s; }
+    .hero-title .hl:nth-child(3) span {
+      animation-delay: .42s;
+      color: var(--gold); font-style: italic;
     }
+    @keyframes hero-rise { to { transform: translateY(0); opacity: 1; } }
 
-    .hero-badge {
-      font-size: .65rem;
-      letter-spacing: .25em;
-      text-transform: uppercase;
-      color: var(--cream-dim);
+    /* Rotating circle badge */
+    .hero-badge-circle {
+      position: absolute; bottom: 6rem; right: 3rem; z-index: 3;
+      width: 140px; height: 140px;
+      animation: spin 20s linear infinite;
+      opacity: 0;
+      animation-delay: .8s, 0s;
     }
-    .hero-badge span { color: var(--gold); margin-right: .5em; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .hero-scroll {
-      display: flex; flex-direction: column; align-items: center; gap: .5rem;
-      font-size: .6rem;
-      letter-spacing: .2em;
-      text-transform: uppercase;
-      color: var(--cream-dim);
+    .hero-badge-circle svg text { font-family: var(--ff-b); }
+    .hero-badge-center {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--ff-d); font-size: 1.4rem;
+      color: var(--gold); font-weight: 400;
+      animation: counter-spin 20s linear infinite;
+    }
+    @keyframes counter-spin { to { transform: rotate(-360deg); } }
+
+    .hero-bottom {
+      position: absolute; bottom: 3rem; left: 3rem; z-index: 3;
+      display: flex; align-items: center; gap: 2.5rem;
+      opacity: 0;
+      animation: fade-in .8s cubic-bezier(0.19,1,0.22,1) .65s forwards;
+    }
+    @keyframes fade-in { to { opacity: 1; } }
+
+    .hero-label {
+      font-size: .58rem; letter-spacing: .3em;
+      text-transform: uppercase; color: var(--cream-dim);
+    }
+    .hero-label em { color: var(--gold); font-style: normal; margin-right: .4em; }
+
+    .hero-scroll-line {
+      display: flex; flex-direction: column; align-items: center; gap: .6rem;
+      font-size: .55rem; letter-spacing: .25em;
+      text-transform: uppercase; color: var(--cream-dim);
       text-decoration: none;
     }
-    .hero-scroll-line {
-      width: 1px; height: 48px;
-      background: linear-gradient(to bottom, var(--gold), transparent);
-      animation: scroll-pulse 2s ease-in-out infinite;
+    .hero-scroll-line::before {
+      content: ''; width: 1px; height: 52px;
+      background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+      animation: scroll-line 2.2s ease-in-out infinite;
     }
-    @keyframes scroll-pulse {
-      0%, 100% { opacity: .4; transform: scaleY(1); }
-      50%       { opacity: 1;  transform: scaleY(1.2); }
+    @keyframes scroll-line {
+      0%,100% { transform: scaleY(1); opacity: .5; }
+      50%      { transform: scaleY(1.3); opacity: 1; }
     }
 
-    /* ─── Marquee ────────────────────────────────────────────── */
-    .marquee-wrap {
-      background: var(--gold);
-      overflow: hidden;
-      padding: .9rem 0;
-    }
+    /* ─── Marquee ─── */
+    .marquee-wrap { background: var(--gold); overflow: hidden; padding: .85rem 0; }
     .marquee-track {
-      display: flex; gap: 0;
-      white-space: nowrap;
-      animation: marquee-scroll 25s linear infinite;
+      display: flex; white-space: nowrap;
+      animation: mq 22s linear infinite;
     }
     .marquee-track span {
-      font-size: .65rem;
-      font-weight: 500;
-      letter-spacing: .3em;
-      text-transform: uppercase;
-      color: var(--bg);
-      padding: 0 2rem;
+      font-size: .6rem; font-weight: 500;
+      letter-spacing: .32em; text-transform: uppercase;
+      color: var(--bg); padding: 0 1.8rem;
     }
-    .marquee-track .dot { color: rgba(10,10,8,.4); letter-spacing: 0; }
-    @keyframes marquee-scroll {
-      from { transform: translateX(0); }
-      to   { transform: translateX(-50%); }
-    }
+    .marquee-track .sep { opacity: .4; letter-spacing: 0; padding: 0 .5rem; }
+    @keyframes mq { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-    /* ─── Reveal Animations ──────────────────────────────────── */
-    .reveal {
-      opacity: 0;
-      transform: translateY(40px);
-      transition: opacity .9s var(--ease-expo), transform .9s var(--ease-expo);
-    }
-    .reveal.in { opacity: 1; transform: translateY(0); }
-    .reveal-delay-1 { transition-delay: .1s; }
-    .reveal-delay-2 { transition-delay: .2s; }
-    .reveal-delay-3 { transition-delay: .3s; }
-    .reveal-delay-4 { transition-delay: .4s; }
-    .reveal-delay-5 { transition-delay: .5s; }
+    /* ─── Scroll-reveal utility ─── */
+    .sr { opacity: 0; transform: translateY(48px); will-change: transform, opacity; }
+    .sr.in { opacity: 1; transform: translateY(0); transition: opacity .9s cubic-bezier(0.19,1,0.22,1), transform .9s cubic-bezier(0.19,1,0.22,1); }
 
-    /* ─── Section Utilities ──────────────────────────────────── */
-    section { position: relative; }
+    /* char-split animation */
+    .split-char { display: inline-block; overflow: hidden; vertical-align: top; }
+    .split-char span { display: inline-block; transform: translateY(110%); opacity: 0; }
 
-    .label {
-      font-size: .6rem;
-      font-weight: 400;
-      letter-spacing: .3em;
-      text-transform: uppercase;
-      color: var(--gold);
-      display: flex; align-items: center; gap: .75rem;
+    /* ─── Section label ─── */
+    .lbl {
+      font-size: .58rem; font-weight: 400; letter-spacing: .3em;
+      text-transform: uppercase; color: var(--gold);
+      display: inline-flex; align-items: center; gap: .75rem;
     }
-    .label::before {
-      content: '';
-      display: block;
-      width: 24px; height: 1px;
-      background: var(--gold);
-    }
+    .lbl::before { content: ''; display: block; width: 22px; height: 1px; background: var(--gold); }
 
-    .section-num {
-      font-family: var(--ff-display);
-      font-size: .75rem;
-      font-weight: 300;
-      color: var(--cream-dim);
-      letter-spacing: .1em;
-    }
-
-    /* ─── Manifesto ──────────────────────────────────────────── */
+    /* ─── Manifesto ─── */
     #manifesto {
-      background: var(--bg-2);
-      padding: 10rem 3rem;
+      background: var(--bg-2); padding: 10rem 3rem;
       border-top: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
     }
-    .manifesto-inner {
-      max-width: 1300px; margin: 0 auto;
-      display: grid; grid-template-columns: 1fr 1fr; gap: 4rem;
-      align-items: center;
+    .mf-inner {
+      max-width: 1320px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center;
     }
-    .manifesto-statement {
-      font-family: var(--ff-display);
-      font-size: clamp(2.2rem, 4.5vw, 4rem);
-      font-weight: 300;
-      line-height: 1.15;
-      letter-spacing: -.01em;
+    .mf-quote-mark {
+      font-family: var(--ff-d); font-size: 12rem; line-height: .7;
+      color: var(--gold-dim); font-weight: 300; margin-bottom: -2rem;
+      display: block; overflow: hidden;
     }
-    .manifesto-statement em {
-      font-style: italic;
-      color: var(--gold);
+    .mf-statement {
+      font-family: var(--ff-d);
+      font-size: clamp(2rem, 4.2vw, 3.8rem);
+      font-weight: 300; line-height: 1.15; letter-spacing: -.01em;
     }
-    .manifesto-body {
-      display: flex; flex-direction: column; gap: 2rem;
+    .mf-statement em { font-style: italic; color: var(--gold); }
+    .mf-line {
+      width: 0; height: 1px; background: var(--border-gold);
+      margin: 2.5rem 0; display: block;
+      transition: width 1.2s cubic-bezier(0.19,1,0.22,1);
     }
-    .manifesto-body p {
-      font-size: .95rem;
-      line-height: 1.8;
-      color: var(--cream-dim);
-      font-weight: 300;
-    }
-    .manifesto-body p strong {
-      color: var(--cream);
-      font-weight: 400;
-    }
+    .mf-line.in { width: 100%; }
 
-    /* ─── Stats ──────────────────────────────────────────────── */
+    .mf-body { display: flex; flex-direction: column; gap: 1.75rem; }
+    .mf-body p { font-size: .92rem; line-height: 1.85; color: var(--cream-dim); font-weight: 300; }
+    .mf-body p strong { color: var(--cream); font-weight: 400; }
+
+    /* ─── Stats ─── */
     #stats {
       padding: 7rem 3rem;
       border-bottom: 1px solid var(--border);
     }
-    .stats-inner {
-      max-width: 1300px; margin: 0 auto;
-      display: grid; grid-template-columns: repeat(4, 1fr);
-      gap: 2px;
+    .stats-grid {
+      max-width: 1320px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;
     }
-    .stat-item {
-      padding: 3rem 2.5rem;
-      border: 1px solid var(--border);
-      position: relative;
-      overflow: hidden;
+    .stat {
+      padding: 3rem 2.5rem; border: 1px solid var(--border);
+      position: relative; overflow: hidden;
       transition: border-color .4s;
     }
-    .stat-item::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: linear-gradient(135deg, rgba(192,154,82,.05), transparent);
-      opacity: 0;
-      transition: opacity .4s;
+    .stat::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at 30% 50%, rgba(192,154,82,.06), transparent 70%);
+      opacity: 0; transition: opacity .5s;
     }
-    .stat-item:hover { border-color: var(--border-gold); }
-    .stat-item:hover::before { opacity: 1; }
-
-    .stat-num {
-      font-family: var(--ff-display);
-      font-size: clamp(3rem, 5vw, 5rem);
-      font-weight: 300;
-      color: var(--cream);
-      line-height: 1;
+    .stat:hover { border-color: var(--border-gold); }
+    .stat:hover::before { opacity: 1; }
+    .stat-n {
+      font-family: var(--ff-d);
+      font-size: clamp(3rem, 4.5vw, 5rem);
+      font-weight: 300; color: var(--cream); line-height: 1;
       margin-bottom: .75rem;
     }
-    .stat-num .accent { color: var(--gold); }
-    .stat-label {
-      font-size: .7rem;
-      letter-spacing: .2em;
-      text-transform: uppercase;
-      color: var(--cream-dim);
-      line-height: 1.5;
+    .stat-n .acc { color: var(--gold); }
+    .stat-lbl {
+      font-size: .65rem; letter-spacing: .22em;
+      text-transform: uppercase; color: var(--cream-dim); line-height: 1.6;
     }
 
-    /* ─── Products ───────────────────────────────────────────── */
-    #producten {
-      padding: 8rem 3rem;
+    /* ─── Featured / Horizontal scroll ─── */
+    #featured { position: relative; }
+
+    .feat-intro {
+      max-width: 1320px; margin: 0 auto;
+      padding: 8rem 3rem 4rem;
+      display: flex; align-items: flex-end; justify-content: space-between;
     }
-    .producten-header {
-      max-width: 1300px; margin: 0 auto 5rem;
-      display: flex; justify-content: space-between; align-items: flex-end;
+    .feat-intro-left {}
+    .feat-title {
+      font-family: var(--ff-d); font-size: clamp(2.5rem, 5vw, 4.5rem);
+      font-weight: 300; letter-spacing: -.025em; line-height: 1.05;
+      margin-top: 1rem;
     }
-    .producten-title {
-      font-family: var(--ff-display);
-      font-size: clamp(2.5rem, 5vw, 4.5rem);
-      font-weight: 300;
-      letter-spacing: -.02em;
-      line-height: 1.1;
+    .feat-hint {
+      font-size: .65rem; letter-spacing: .25em;
+      text-transform: uppercase; color: var(--cream-dim);
+      display: flex; align-items: center; gap: .75rem;
+      padding-bottom: .5rem;
     }
-    .producten-sub {
-      max-width: 360px;
-      font-size: .9rem;
-      line-height: 1.7;
-      color: var(--cream-dim);
+    .feat-hint-arrow {
+      font-size: .9rem; color: var(--gold);
+      animation: hint-bounce .9s ease-in-out infinite alternate;
+    }
+    @keyframes hint-bounce { to { transform: translateX(6px); } }
+    .feat-sub {
+      max-width: 320px; font-size: .88rem;
+      line-height: 1.75; color: var(--cream-dim);
     }
 
-    .products-grid {
-      max-width: 1300px; margin: 0 auto;
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 2px;
+    /* Pinned horizontal track */
+    .feat-pin {
+      height: 100vh; overflow: hidden;
+      display: flex; align-items: center;
+    }
+    .feat-track {
+      display: flex; height: 100vh;
+      will-change: transform;
     }
 
-    .product-card {
-      position: relative;
-      overflow: hidden;
-      min-height: 520px;
+    .feat-card {
+      width: 72vw; min-width: 72vw; height: 100%;
+      position: relative; overflow: hidden;
+      flex-shrink: 0;
+      border-right: 1px solid rgba(242,236,224,.06);
       display: flex; flex-direction: column; justify-content: flex-end;
-      padding: 3rem;
-      border: 1px solid var(--border);
-      cursor: none;
-      transition: border-color .5s;
+      padding: 4rem;
     }
-    .product-card:hover { border-color: var(--border-gold); }
+    .feat-card:first-child { margin-left: 14vw; }
+    .feat-card:last-child  { margin-right: 14vw; }
 
-    .product-card-bg {
+    .feat-card-bg {
       position: absolute; inset: 0;
       background-size: cover; background-position: center;
-      transform: scale(1.05);
-      transition: transform .8s var(--ease-expo);
-      filter: brightness(.25) saturate(.8);
+      transition: transform .8s cubic-bezier(0.19,1,0.22,1);
+      will-change: transform;
     }
-    .product-card:hover .product-card-bg {
-      transform: scale(1);
-      filter: brightness(.2) saturate(.6);
+    .feat-card:hover .feat-card-bg { transform: scale(1.03); }
+
+    .fc-nieuw   .feat-card-bg { background: linear-gradient(135deg, #161410 0%, #0d0c09 100%); }
+    .fc-gebruikt .feat-card-bg { background: linear-gradient(135deg, #0e1015 0%, #090a0d 100%); }
+    .fc-mussana  .feat-card-bg { background: linear-gradient(135deg, #13110f 0%, #0c0b09 100%); }
+    .fc-sanomat  .feat-card-bg { background: linear-gradient(135deg, #0d1210 0%, #090d0b 100%); }
+
+    .feat-card-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(10,10,8,.97) 0%, rgba(10,10,8,.3) 55%, transparent 100%);
     }
 
-    .product-card-bg-nieuw {
-      background:
-        linear-gradient(135deg, #1a1612 0%, #0a0a08 100%);
-    }
-    .product-card-bg-gebruikt {
-      background:
-        linear-gradient(135deg, #0f1214 0%, #0a0a08 100%);
+    .feat-card-num {
+      position: absolute; top: 3.5rem; left: 4rem;
+      font-family: var(--ff-d); font-size: 7rem; font-weight: 300;
+      color: rgba(242,236,224,.04); line-height: 1;
+      letter-spacing: -.05em; user-select: none;
     }
 
-    .product-card-tag {
-      position: absolute; top: 2.5rem; left: 3rem;
+    .feat-card-tag {
+      position: absolute; top: 3.5rem; right: 4rem;
     }
-    .product-card-content { position: relative; z-index: 2; }
-    .product-card-eyebrow {
-      font-size: .6rem;
-      letter-spacing: .3em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 1rem;
-    }
-    .product-card-title {
-      font-family: var(--ff-display);
-      font-size: clamp(2.5rem, 4vw, 3.5rem);
-      font-weight: 300;
-      letter-spacing: -.02em;
-      line-height: 1.05;
-      margin-bottom: 1.5rem;
-    }
-    .product-card-desc {
-      font-size: .9rem;
-      line-height: 1.7;
-      color: var(--cream-dim);
-      margin-bottom: 2rem;
-      max-width: 380px;
-    }
-    .product-card-models {
-      display: flex; flex-wrap: wrap; gap: .5rem;
-      margin-bottom: 2.5rem;
-    }
-    .model-chip {
-      font-size: .6rem;
-      letter-spacing: .15em;
-      text-transform: uppercase;
+    .feat-tag {
+      font-size: .55rem; letter-spacing: .2em;
+      text-transform: uppercase; color: var(--gold);
       border: 1px solid var(--border-gold);
-      color: var(--gold);
-      padding: .35rem .75rem;
+      padding: .35rem .8rem;
+    }
+
+    /* Guarantee ring */
+    .feat-guarantee {
+      position: absolute; top: 3.5rem; left: 50%; transform: translateX(-50%);
+      width: 88px; height: 88px;
+      border: 1px solid var(--border-gold); border-radius: 50%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: .1rem;
+    }
+    .feat-guarantee .gn {
+      font-family: var(--ff-d); font-size: 1.5rem;
+      font-weight: 300; color: var(--gold); line-height: 1;
+    }
+    .feat-guarantee .gl {
+      font-size: .45rem; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--cream-dim);
+    }
+
+    .feat-card-content { position: relative; z-index: 2; }
+    .feat-card-eye {
+      font-size: .58rem; letter-spacing: .3em;
+      text-transform: uppercase; color: var(--gold); margin-bottom: 1rem;
+    }
+    .feat-card-title {
+      font-family: var(--ff-d);
+      font-size: clamp(2.8rem, 4vw, 3.8rem);
+      font-weight: 300; letter-spacing: -.02em;
+      line-height: 1; margin-bottom: 1.5rem;
+    }
+    .feat-card-desc {
+      font-size: .88rem; line-height: 1.78;
+      color: var(--cream-dim); max-width: 480px; margin-bottom: 2rem;
+    }
+    .feat-chips {
+      display: flex; flex-wrap: wrap; gap: .45rem; margin-bottom: 2.5rem;
+    }
+    .chip {
+      font-size: .55rem; letter-spacing: .14em; text-transform: uppercase;
+      border: 1px solid var(--border-gold); color: var(--gold);
+      padding: .3rem .65rem;
       transition: background .3s, color .3s;
     }
-    .model-chip:hover { background: var(--gold); color: var(--bg); }
+    .chip:hover { background: var(--gold); color: var(--bg); }
 
-    .product-card-cta {
-      display: inline-flex; align-items: center; gap: .75rem;
-      font-size: .7rem;
-      letter-spacing: .2em;
-      text-transform: uppercase;
-      color: var(--cream);
-      text-decoration: none;
+    .feat-cta {
+      display: inline-flex; align-items: center; gap: .8rem;
+      font-size: .65rem; letter-spacing: .22em; text-transform: uppercase;
+      color: var(--cream); text-decoration: none;
       transition: color .3s, gap .3s;
     }
-    .product-card-cta::after {
-      content: '→';
-      transition: transform .3s;
-    }
-    .product-card-cta:hover { color: var(--gold); gap: 1.25rem; }
-    .product-card-cta:hover::after { transform: translateX(4px); }
+    .feat-cta::after { content: '→'; transition: transform .3s; }
+    .feat-cta:hover { color: var(--gold); gap: 1.4rem; }
+    .feat-cta:hover::after { transform: translateX(4px); }
 
-    /* Guarantee badge */
-    .guarantee-badge {
-      position: absolute; top: 2.5rem; right: 3rem;
-      width: 80px; height: 80px;
-      border: 1px solid var(--border-gold);
-      border-radius: 50%;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: .1rem;
+    /* brand specific */
+    .fc-mussana .feat-card-bg,
+    .fc-sanomat .feat-card-bg {
+      filter: brightness(.9) saturate(.8);
     }
-    .guarantee-badge .num {
-      font-family: var(--ff-display);
-      font-size: 1.3rem;
-      font-weight: 300;
-      color: var(--gold);
-      line-height: 1;
+    .feat-brand-name {
+      font-family: var(--ff-d); font-size: clamp(4rem, 6vw, 5.5rem);
+      font-weight: 300; letter-spacing: -.03em;
+      line-height: 1; margin-bottom: 1.5rem;
     }
-    .guarantee-badge .txt {
-      font-size: .45rem;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: var(--cream-dim);
-    }
+    .feat-brand-name em { font-style: italic; color: var(--gold); }
 
-    /* ─── Brands ─────────────────────────────────────────────── */
-    #merken {
-      background: var(--cream);
-      color: var(--bg);
-      padding: 8rem 3rem;
-    }
-    .merken-inner { max-width: 1300px; margin: 0 auto; }
-
-    .merken-header {
-      display: flex; justify-content: space-between; align-items: flex-end;
-      margin-bottom: 5rem;
-      padding-bottom: 3rem;
-      border-bottom: 1px solid rgba(10,10,8,.1);
-    }
-    .merken-title {
-      font-family: var(--ff-display);
-      font-size: clamp(2.5rem, 5vw, 4rem);
-      font-weight: 300;
-      color: var(--bg);
-      letter-spacing: -.02em;
-      line-height: 1.1;
-    }
-    .merken-label { color: var(--gold); }
-    .merken-label::before { background: var(--gold); }
-
-    .brands-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
-    }
-
-    .brand-card {
-      padding: 4rem 3.5rem;
-      border: 1px solid rgba(10,10,8,.1);
-      position: relative;
-      overflow: hidden;
-      transition: border-color .4s, background .4s;
-    }
-    .brand-card:hover { background: rgba(10,10,8,.04); border-color: rgba(192,154,82,.4); }
-
-    .brand-name {
-      font-family: var(--ff-display);
-      font-size: clamp(2.8rem, 5vw, 4.5rem);
-      font-weight: 300;
-      letter-spacing: -.02em;
-      color: var(--bg);
-      line-height: 1;
-      margin-bottom: 1.5rem;
-    }
-    .brand-name em { color: var(--gold); font-style: italic; }
-
-    .brand-desc {
-      font-size: .9rem;
-      line-height: 1.75;
-      color: rgba(10,10,8,.6);
-      margin-bottom: 2.5rem;
-      max-width: 420px;
-    }
-    .brand-types {
-      display: flex; flex-direction: column; gap: .75rem;
-    }
-    .brand-type-row {
+    .feat-brand-list { display: flex; flex-direction: column; gap: 0; margin-bottom: 2rem; }
+    .feat-brand-row {
       display: flex; align-items: center; justify-content: space-between;
-      padding: .875rem 0;
-      border-top: 1px solid rgba(10,10,8,.08);
-      font-size: .85rem;
-      color: rgba(10,10,8,.7);
+      padding: .8rem 0; border-top: 1px solid rgba(242,236,224,.07);
+      font-size: .82rem; color: var(--cream-dim);
     }
-    .brand-type-row:last-child { border-bottom: 1px solid rgba(10,10,8,.08); }
-    .brand-type-row strong { font-weight: 500; color: var(--bg); }
-    .brand-type-row .tag {
-      font-size: .55rem;
-      letter-spacing: .15em;
-      text-transform: uppercase;
-      border: 1px solid rgba(192,154,82,.5);
-      color: var(--gold);
-      padding: .2rem .5rem;
+    .feat-brand-row:last-child { border-bottom: 1px solid rgba(242,236,224,.07); }
+    .feat-brand-row strong { color: var(--cream); font-weight: 400; }
+    .feat-brand-row .bt {
+      font-size: .5rem; letter-spacing: .12em; text-transform: uppercase;
+      border: 1px solid var(--border-gold); color: var(--gold); padding: .18rem .45rem;
     }
 
-    /* ─── Parts ──────────────────────────────────────────────── */
+    /* scroll progress for horizontal */
+    .feat-progress {
+      max-width: 1320px; margin: 0 auto;
+      padding: 2rem 3rem 0; display: flex;
+      align-items: center; gap: 1.5rem;
+    }
+    .feat-progress-bar {
+      flex: 1; height: 1px; background: var(--border); position: relative; overflow: hidden;
+    }
+    .feat-progress-fill {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 25%; background: var(--gold);
+      transition: width .1s linear;
+    }
+    .feat-progress-num {
+      font-size: .6rem; letter-spacing: .2em;
+      text-transform: uppercase; color: var(--cream-dim); white-space: nowrap;
+    }
+    .feat-progress-num em { color: var(--gold); font-style: normal; }
+
+    /* ─── Onderdelen ─── */
     #onderdelen {
       padding: 8rem 3rem;
       border-top: 1px solid var(--border);
     }
-    .onderdelen-inner { max-width: 1300px; margin: 0 auto; }
-    .onderdelen-header {
+    .ond-inner { max-width: 1320px; margin: 0 auto; }
+    .ond-header {
       display: flex; justify-content: space-between; align-items: flex-end;
-      margin-bottom: 5rem;
+      margin-bottom: 4rem;
+      padding-bottom: 3rem; border-bottom: 1px solid var(--border);
     }
-    .onderdelen-title {
-      font-family: var(--ff-display);
-      font-size: clamp(2.5rem, 5vw, 4rem);
-      font-weight: 300;
-      letter-spacing: -.02em;
+    .ond-title {
+      font-family: var(--ff-d); font-size: clamp(2.5rem,5vw,4rem);
+      font-weight: 300; letter-spacing: -.025em; margin-top: 1rem;
     }
-    .onderdelen-note {
-      max-width: 340px;
-      font-size: .85rem;
-      line-height: 1.7;
-      color: var(--cream-dim);
+    .ond-note {
+      max-width: 330px; font-size: .84rem;
+      line-height: 1.75; color: var(--cream-dim);
     }
+    .ond-note a { color: var(--gold); text-decoration: none; }
     .parts-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 2px;
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 2px;
     }
-    .part-item {
-      padding: 2.5rem 2rem;
-      border: 1px solid var(--border);
+    .part {
+      padding: 2.2rem 2rem; border: 1px solid var(--border);
+      position: relative; overflow: hidden;
       transition: border-color .4s, background .4s;
-      position: relative;
-      overflow: hidden;
+      cursor: default;
     }
-    .part-item::before {
-      content: '';
-      position: absolute; left: 0; top: 0; bottom: 0;
-      width: 2px;
-      background: var(--gold);
-      transform: scaleY(0);
-      transform-origin: bottom;
-      transition: transform .4s var(--ease-expo);
+    .part::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+      background: linear-gradient(to bottom, var(--gold), var(--gold-light));
+      transform: scaleY(0); transform-origin: top;
+      transition: transform .5s cubic-bezier(0.19,1,0.22,1);
     }
-    .part-item:hover { border-color: var(--border-gold); background: rgba(192,154,82,.03); }
-    .part-item:hover::before { transform: scaleY(1); }
-
+    .part:hover { border-color: var(--border-gold); background: rgba(192,154,82,.025); }
+    .part:hover::before { transform: scaleY(1); }
     .part-brand {
-      font-size: .55rem;
-      letter-spacing: .25em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 1rem;
+      font-size: .52rem; letter-spacing: .25em;
+      text-transform: uppercase; color: var(--gold); margin-bottom: .9rem;
     }
     .part-name {
-      font-family: var(--ff-display);
-      font-size: 1.3rem;
-      font-weight: 400;
-      letter-spacing: -.01em;
-      color: var(--cream);
-      line-height: 1.3;
+      font-family: var(--ff-d); font-size: 1.25rem;
+      font-weight: 400; color: var(--cream); line-height: 1.3;
     }
 
-    /* ─── Service ────────────────────────────────────────────── */
+    /* ─── Service ─── */
     #service {
-      background: var(--bg-2);
-      padding: 8rem 3rem;
+      background: var(--bg-2); padding: 8rem 3rem;
       border-top: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
     }
-    .service-inner { max-width: 1300px; margin: 0 auto; }
-    .service-header { margin-bottom: 5rem; }
-    .service-title {
-      font-family: var(--ff-display);
-      font-size: clamp(2.5rem, 5vw, 4rem);
-      font-weight: 300;
-      letter-spacing: -.02em;
-      margin-top: 1.25rem;
+    .svc-inner { max-width: 1320px; margin: 0 auto; }
+    .svc-header { margin-bottom: 4.5rem; }
+    .svc-title {
+      font-family: var(--ff-d); font-size: clamp(2.5rem,5vw,4rem);
+      font-weight: 300; letter-spacing: -.025em; margin-top: 1rem;
     }
-    .service-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;
+    .svc-grid {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 2px;
     }
-    .service-item {
-      padding: 3.5rem 2.5rem;
-      border: 1px solid var(--border);
-      position: relative;
-      transition: border-color .4s;
+    .svc-item {
+      padding: 3.5rem 2.5rem; border: 1px solid var(--border);
+      position: relative; transition: border-color .4s;
+      overflow: hidden;
     }
-    .service-item:hover { border-color: var(--border-gold); }
+    .svc-item::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--gold), transparent);
+      transform: scaleX(0); transform-origin: left;
+      transition: transform .6s cubic-bezier(0.19,1,0.22,1);
+    }
+    .svc-item:hover { border-color: var(--border-gold); }
+    .svc-item:hover::after { transform: scaleX(1); }
 
-    .service-num {
-      font-family: var(--ff-display);
-      font-size: 4rem;
-      font-weight: 300;
-      color: rgba(192,154,82,.15);
-      line-height: 1;
-      margin-bottom: 1.5rem;
-      letter-spacing: -.03em;
+    .svc-num {
+      font-family: var(--ff-d); font-size: 5rem; font-weight: 300;
+      color: rgba(192,154,82,.1); line-height: 1; margin-bottom: 1.5rem;
     }
-    .service-icon {
-      font-size: 1.5rem;
-      margin-bottom: 1.25rem;
-      display: block;
+    .svc-ico { font-size: 1.6rem; margin-bottom: 1.25rem; display: block; }
+    .svc-name {
+      font-family: var(--ff-d); font-size: 1.65rem; font-weight: 400;
+      letter-spacing: -.01em; color: var(--cream); margin-bottom: 1rem; line-height: 1.2;
     }
-    .service-name {
-      font-family: var(--ff-display);
-      font-size: 1.6rem;
-      font-weight: 400;
-      letter-spacing: -.01em;
-      color: var(--cream);
-      margin-bottom: 1rem;
-      line-height: 1.2;
-    }
-    .service-desc {
-      font-size: .85rem;
-      line-height: 1.75;
-      color: var(--cream-dim);
-    }
-    .service-highlight {
-      display: inline-block;
-      margin-top: 1.75rem;
-      font-size: .65rem;
-      letter-spacing: .15em;
-      text-transform: uppercase;
-      color: var(--gold);
-      border-bottom: 1px solid var(--border-gold);
-      padding-bottom: 2px;
+    .svc-desc { font-size: .84rem; line-height: 1.8; color: var(--cream-dim); }
+    .svc-badge {
+      display: inline-block; margin-top: 1.75rem;
+      font-size: .6rem; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--gold);
+      border-bottom: 1px solid var(--border-gold); padding-bottom: 3px;
     }
 
-    /* ─── Contact ────────────────────────────────────────────── */
-    #contact {
-      padding: 8rem 3rem;
+    /* ─── Trust strip ─── */
+    .trust {
+      background: var(--bg-3); overflow: hidden;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 1.8rem 0;
     }
-    .contact-inner {
-      max-width: 1300px; margin: 0 auto;
-      display: grid; grid-template-columns: 1fr 1fr; gap: 6rem;
-      align-items: start;
+    .trust-track {
+      display: flex; white-space: nowrap;
+      animation: trust-mq 30s linear infinite;
     }
-    .contact-left {}
-    .contact-label { margin-bottom: 1.25rem; }
-    .contact-title {
-      font-family: var(--ff-display);
-      font-size: clamp(2.5rem, 5vw, 4.5rem);
-      font-weight: 300;
-      letter-spacing: -.02em;
-      line-height: 1.05;
-      margin-bottom: 2.5rem;
+    .trust-item {
+      display: inline-flex; align-items: center; gap: .65rem;
+      font-size: .65rem; letter-spacing: .2em;
+      text-transform: uppercase; color: var(--cream-dim);
+      padding: 0 2.5rem;
     }
-    .contact-title em { color: var(--gold); font-style: italic; }
-    .contact-info { display: flex; flex-direction: column; gap: 1.5rem; }
-    .contact-info-item {
-      display: flex; gap: 1.25rem;
-      align-items: flex-start;
+    .trust-item .ti { color: var(--gold); }
+    @keyframes trust-mq { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+    /* ─── Contact ─── */
+    #contact { padding: 8rem 3rem; }
+    .ct-inner {
+      max-width: 1320px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 7rem; align-items: start;
     }
-    .contact-info-ico {
-      width: 36px; height: 36px;
+    .ct-title {
+      font-family: var(--ff-d); font-size: clamp(2.5rem,5vw,4.5rem);
+      font-weight: 300; letter-spacing: -.025em; line-height: 1.05; margin: 1.25rem 0 2.5rem;
+    }
+    .ct-title em { color: var(--gold); font-style: italic; }
+
+    .ct-info { display: flex; flex-direction: column; gap: 1.5rem; }
+    .ct-row { display: flex; gap: 1.25rem; align-items: flex-start; }
+    .ct-ico {
+      width: 38px; height: 38px; flex-shrink: 0;
       border: 1px solid var(--border-gold);
-      display: flex; align-items: center; justify-content: center;
-      font-size: .9rem;
-      flex-shrink: 0;
-      margin-top: .1rem;
+      display: flex; align-items: center; justify-content: center; font-size: .9rem;
+      transition: background .3s, border-color .3s;
     }
-    .contact-info-content {}
-    .contact-info-lbl {
-      font-size: .58rem;
-      letter-spacing: .2em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: .3rem;
+    .ct-row:hover .ct-ico { background: var(--gold-dim); border-color: var(--gold); }
+    .ct-lbl {
+      font-size: .55rem; letter-spacing: .22em;
+      text-transform: uppercase; color: var(--gold); margin-bottom: .3rem;
     }
-    .contact-info-val {
-      font-size: .95rem;
-      color: var(--cream);
-      line-height: 1.5;
-    }
-    .contact-info-val a {
-      color: inherit; text-decoration: none;
-      transition: color .3s;
-    }
-    .contact-info-val a:hover { color: var(--gold); }
+    .ct-val { font-size: .95rem; color: var(--cream); line-height: 1.5; }
+    .ct-val a { color: inherit; text-decoration: none; transition: color .3s; }
+    .ct-val a:hover { color: var(--gold); }
 
-    .contact-availability {
-      margin-top: 2.5rem;
-      padding: 1.5rem 2rem;
+    .ct-avail {
+      margin-top: 2.5rem; padding: 1.5rem 2rem;
       border: 1px solid var(--border-gold);
-      background: rgba(192,154,82,.04);
+      background: rgba(192,154,82,.03);
     }
-    .contact-availability-title {
-      font-size: .6rem;
-      letter-spacing: .2em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: .75rem;
+    .ct-avail-lbl {
+      font-size: .57rem; letter-spacing: .22em;
+      text-transform: uppercase; color: var(--gold); margin-bottom: .7rem;
     }
-    .contact-availability-val {
-      font-family: var(--ff-display);
-      font-size: 1.5rem;
-      font-weight: 300;
-      color: var(--cream);
+    .ct-avail-val {
+      font-family: var(--ff-d); font-size: 1.6rem;
+      font-weight: 300; color: var(--cream);
     }
 
     /* Form */
-    .contact-form { display: flex; flex-direction: column; gap: 1.5rem; }
-    .form-group { display: flex; flex-direction: column; gap: .5rem; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-    .form-label {
-      font-size: .6rem;
-      letter-spacing: .2em;
-      text-transform: uppercase;
-      color: var(--cream-dim);
+    .ct-form { display: flex; flex-direction: column; gap: 1.6rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6rem; }
+    .fg { display: flex; flex-direction: column; gap: .55rem; }
+    .fl {
+      font-size: .57rem; letter-spacing: .22em;
+      text-transform: uppercase; color: var(--cream-dim);
     }
-    .form-input,
-    .form-textarea {
-      background: transparent;
-      border: none;
-      border-bottom: 1px solid var(--border);
-      color: var(--cream);
-      font-family: var(--ff-body);
-      font-size: .9rem;
-      font-weight: 300;
-      padding: .75rem 0;
-      outline: none;
-      transition: border-color .3s;
-      width: 100%;
+    .fi, .ft {
+      background: transparent; border: none;
+      border-bottom: 1px solid var(--border); color: var(--cream);
+      font-family: var(--ff-b); font-size: .9rem; font-weight: 300;
+      padding: .75rem 0; outline: none; width: 100%;
+      transition: border-color .35s;
     }
-    .form-input:focus,
-    .form-textarea:focus { border-color: var(--gold); }
-    .form-textarea { resize: none; min-height: 120px; }
-    .form-input::placeholder,
-    .form-textarea::placeholder { color: rgba(242,236,224,.25); }
-
-    .form-btn {
+    .fi:focus, .ft:focus { border-color: var(--gold); }
+    .fi::placeholder, .ft::placeholder { color: rgba(242,236,224,.2); }
+    .ft { resize: none; min-height: 110px; }
+    .fb {
       align-self: flex-start;
-      display: inline-flex; align-items: center; gap: 1rem;
-      background: var(--gold);
-      color: var(--bg);
-      border: none;
-      padding: 1rem 2.5rem;
-      font-family: var(--ff-body);
-      font-size: .7rem;
-      font-weight: 400;
-      letter-spacing: .2em;
-      text-transform: uppercase;
-      cursor: none;
-      transition: background .3s, transform .3s, gap .3s;
+      display: inline-flex; align-items: center; gap: .9rem;
+      background: var(--gold); color: var(--bg); border: none;
+      padding: 1rem 2.5rem; font-family: var(--ff-b); font-size: .65rem;
+      font-weight: 400; letter-spacing: .22em; text-transform: uppercase;
+      cursor: none; position: relative; overflow: hidden;
+      transition: transform .3s;
     }
-    .form-btn::after { content: '→'; transition: transform .3s; }
-    .form-btn:hover {
-      background: var(--gold-light);
-      transform: translateY(-2px);
-      gap: 1.5rem;
+    .fb::before {
+      content: ''; position: absolute; inset: 0;
+      background: var(--gold-light); transform: translateX(-100%);
+      transition: transform .5s cubic-bezier(0.19,1,0.22,1);
     }
-    .form-btn:hover::after { transform: translateX(4px); }
+    .fb span { position: relative; z-index: 1; }
+    .fb .fa { position: relative; z-index: 1; transition: transform .3s; }
+    .fb:hover::before { transform: translateX(0); }
+    .fb:hover { transform: translateY(-2px); }
+    .fb:hover .fa { transform: translateX(4px); }
 
-    /* ─── Trust Strip ────────────────────────────────────────── */
-    .trust-strip {
-      background: var(--bg-2);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      padding: 2rem 3rem;
-      display: flex; align-items: center; justify-content: center; gap: 4rem;
+    /* ─── Footer ─── */
+    footer { background: var(--bg); border-top: 1px solid var(--border); padding: 5rem 3rem 2.5rem; }
+    .ft-inner { max-width: 1320px; margin: 0 auto; }
+    .ft-top {
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 4rem;
+      margin-bottom: 4rem; padding-bottom: 4rem; border-bottom: 1px solid var(--border);
     }
-    .trust-item {
-      display: flex; align-items: center; gap: .75rem;
-      font-size: .7rem;
-      letter-spacing: .15em;
-      text-transform: uppercase;
-      color: var(--cream-dim);
+    .ft-logo {
+      font-family: var(--ff-d); font-size: 1.35rem; font-weight: 400;
+      letter-spacing: .22em; text-transform: uppercase;
+      color: var(--cream); text-decoration: none; display: block; margin-bottom: 1.25rem;
     }
-    .trust-item .ico { color: var(--gold); font-size: 1rem; }
-
-    /* ─── Footer ─────────────────────────────────────────────── */
-    footer {
-      background: var(--bg);
-      border-top: 1px solid var(--border);
-      padding: 5rem 3rem 2.5rem;
+    .ft-logo em { font-style: italic; color: var(--gold); }
+    .ft-tag { font-size: .82rem; line-height: 1.75; color: var(--cream-dim); max-width: 270px; }
+    .ft-col-title {
+      font-size: .57rem; letter-spacing: .28em;
+      text-transform: uppercase; color: var(--gold); margin-bottom: 1.5rem;
     }
-    .footer-inner {
-      max-width: 1300px; margin: 0 auto;
-    }
-    .footer-top {
-      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
-      gap: 4rem; margin-bottom: 4rem;
-      padding-bottom: 4rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .footer-brand {}
-    .footer-logo {
-      font-family: var(--ff-display);
-      font-size: 1.4rem;
-      font-weight: 400;
-      letter-spacing: .2em;
-      text-transform: uppercase;
-      color: var(--cream);
-      display: block;
-      margin-bottom: 1.25rem;
-    }
-    .footer-logo em { font-style: italic; color: var(--gold); }
-    .footer-tagline {
-      font-size: .8rem;
-      line-height: 1.7;
-      color: var(--cream-dim);
-      max-width: 280px;
-    }
-    .footer-col-title {
-      font-size: .6rem;
-      letter-spacing: .25em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 1.5rem;
-    }
-    .footer-links { list-style: none; display: flex; flex-direction: column; gap: .75rem; }
-    .footer-links a {
-      font-size: .85rem;
-      color: var(--cream-dim);
-      text-decoration: none;
+    .ft-list { list-style: none; display: flex; flex-direction: column; gap: .72rem; }
+    .ft-list a {
+      font-size: .84rem; color: var(--cream-dim); text-decoration: none;
       transition: color .3s, padding-left .3s;
     }
-    .footer-links a:hover { color: var(--cream); padding-left: .5rem; }
-
-    .footer-bottom {
+    .ft-list a:hover { color: var(--cream); padding-left: .4rem; }
+    .ft-bottom {
       display: flex; justify-content: space-between; align-items: center;
-      font-size: .7rem;
-      color: rgba(242,236,224,.25);
-      letter-spacing: .1em;
+      font-size: .65rem; color: rgba(242,236,224,.22); letter-spacing: .1em;
     }
-    .footer-social {
-      display: flex; gap: 1.5rem;
+    .ft-social { display: flex; gap: 1.5rem; }
+    .ft-social a {
+      font-size: .62rem; letter-spacing: .18em; text-transform: uppercase;
+      color: rgba(242,236,224,.3); text-decoration: none; transition: color .3s;
     }
-    .footer-social a {
-      color: rgba(242,236,224,.35);
-      text-decoration: none;
-      font-size: .65rem;
-      letter-spacing: .15em;
-      text-transform: uppercase;
-      transition: color .3s;
-    }
-    .footer-social a:hover { color: var(--gold); }
+    .ft-social a:hover { color: var(--gold); }
 
-    /* ─── Mobile ──────────────────────────────────────────────── */
+    /* ─── Responsive ─── */
+    @media (max-width: 1024px) {
+      .feat-card { width: 85vw; min-width: 85vw; }
+    }
     @media (max-width: 900px) {
-      nav { padding: 1.5rem 1.5rem; }
-      nav.scrolled { padding: 1rem 1.5rem; }
-      .nav-links { display: none; }
-      .nav-cta { display: none; }
-
-      .hero-content { padding: 0 1.5rem 4rem; flex-direction: column; align-items: flex-start; gap: 2rem; }
-      .hero-meta { align-items: flex-start; }
-
-      .manifesto-inner { grid-template-columns: 1fr; gap: 3rem; }
-      .stats-inner { grid-template-columns: 1fr 1fr; }
-      .products-grid { grid-template-columns: 1fr; }
-      .brands-grid { grid-template-columns: 1fr; }
+      nav#nav { padding: 1.4rem 1.5rem; }
+      nav#nav.stuck { padding: .9rem 1.5rem; }
+      .nav-links, .nav-cta { display: none; }
+      .nav-burger { display: flex; }
+      #section-dots { display: none; }
+      .hero-content { padding: 0 1.5rem 4rem; }
+      .hero-badge-circle { bottom: 5rem; right: 1.5rem; width: 100px; height: 100px; }
+      .hero-bottom { left: 1.5rem; bottom: 2.5rem; }
+      #manifesto { padding: 6rem 1.5rem; }
+      .mf-inner { grid-template-columns: 1fr; gap: 3rem; }
+      #stats { padding: 5rem 1.5rem; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .feat-intro { padding: 6rem 1.5rem 3rem; flex-direction: column; gap: 1.5rem; }
+      .feat-card { width: 88vw; min-width: 88vw; padding: 2.5rem; }
+      .feat-card:first-child { margin-left: 6vw; }
+      #onderdelen { padding: 5rem 1.5rem; }
       .parts-grid { grid-template-columns: 1fr 1fr; }
-      .service-grid { grid-template-columns: 1fr; }
-      .contact-inner { grid-template-columns: 1fr; gap: 3rem; }
-      .footer-top { grid-template-columns: 1fr 1fr; gap: 2.5rem; }
-
-      section { padding-left: 1.5rem; padding-right: 1.5rem; }
-      #producten, #onderdelen, #service, #contact, #merken { padding: 5rem 1.5rem; }
-      #manifesto { padding: 5rem 1.5rem; }
-      #stats { padding: 4rem 1.5rem; }
-
-      .trust-strip { flex-wrap: wrap; gap: 1.5rem; padding: 1.5rem; }
+      .ond-header { flex-direction: column; gap: 1.5rem; align-items: flex-start; }
+      #service { padding: 5rem 1.5rem; }
+      .svc-grid { grid-template-columns: 1fr; }
+      #contact { padding: 5rem 1.5rem; }
+      .ct-inner { grid-template-columns: 1fr; gap: 3.5rem; }
+      footer { padding: 4rem 1.5rem 2rem; }
+      .ft-top { grid-template-columns: 1fr 1fr; gap: 2.5rem; }
+      .ft-bottom { flex-direction: column; gap: 1.5rem; text-align: center; }
       .form-row { grid-template-columns: 1fr; }
     }
-
     @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr; }
       .parts-grid { grid-template-columns: 1fr; }
-      .stats-inner { grid-template-columns: 1fr; }
-      .footer-top { grid-template-columns: 1fr; }
-      .footer-bottom { flex-direction: column; gap: 1.5rem; text-align: center; }
+      .ft-top { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
-  <!-- ─── Preloader ─────────────────────────────────────── -->
-  <div id="preloader">
-    <div class="preloader-logo">
-      <span style="animation-delay:.05s">N</span><span style="animation-delay:.1s">O</span><span style="animation-delay:.15s">T</span><span style="animation-delay:.2s">E</span><span style="animation-delay:.25s">R</span><span style="animation-delay:.3s">M</span><span style="animation-delay:.35s">A</span><span style="animation-delay:.4s">N</span><span style="animation-delay:.45s">S</span>
-    </div>
-    <div class="preloader-bar"></div>
+<!-- ─── Progress Bar ─── -->
+<div id="progress"></div>
+
+<!-- ─── Film Grain ─── -->
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ─── Preloader ─── -->
+<div id="preloader">
+  <div class="pre-logo" aria-hidden="true">
+    <span class="pl-char" style="animation-delay:.04s">N</span><span class="pl-char" style="animation-delay:.08s">O</span><span class="pl-char" style="animation-delay:.12s">T</span><span class="pl-char" style="animation-delay:.16s">E</span><span class="pl-char" style="animation-delay:.20s">R</span><span class="pl-char" style="animation-delay:.24s">M</span><span class="pl-char" style="animation-delay:.28s">A</span><span class="pl-char" style="animation-delay:.32s">N</span><span class="pl-char" style="animation-delay:.36s">S</span>
+  </div>
+  <div class="pre-bar-wrap"><div class="pre-bar"></div></div>
+  <div class="pre-count" id="pre-count">0%</div>
+</div>
+
+<!-- ─── Cursor ─── -->
+<div id="cur-dot"   aria-hidden="true"></div>
+<div id="cur-ring"  aria-hidden="true"></div>
+<div id="cur-label" aria-hidden="true"></div>
+
+<!-- ─── Navigation ─── -->
+<nav id="nav">
+  <a href="#" class="nav-logo">Notermans<em>.</em></a>
+  <ul class="nav-links">
+    <li><a href="#featured">Automaten</a></li>
+    <li><a href="#onderdelen">Onderdelen</a></li>
+    <li><a href="#service">Service</a></li>
+  </ul>
+  <a href="#contact" class="nav-cta magnetic"><span>Contact</span></a>
+  <button class="nav-burger" id="burger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- Mobile menu -->
+<div id="mobile-menu">
+  <ul class="mob-links">
+    <li><a href="#featured"   class="mob-link">Automaten</a></li>
+    <li><a href="#onderdelen" class="mob-link">Onderdelen</a></li>
+    <li><a href="#service"    class="mob-link">Service</a></li>
+    <li><a href="#contact"    class="mob-link">Contact</a></li>
+  </ul>
+  <div class="mob-footer">
+    06 11 40 48 06 · slagroommachine@gmail.com<br>
+    Sint Josephstraat 19, Hoensbroek
+  </div>
+</div>
+
+<!-- ─── Section Dots ─── -->
+<nav id="section-dots" aria-label="Secties">
+  <a href="#hero"       class="sd active" data-s="hero"       title="Hero"></a>
+  <a href="#manifesto"  class="sd"        data-s="manifesto"  title="Over ons"></a>
+  <a href="#stats"      class="sd"        data-s="stats"      title="Cijfers"></a>
+  <a href="#featured"   class="sd"        data-s="featured"   title="Automaten"></a>
+  <a href="#onderdelen" class="sd"        data-s="onderdelen" title="Onderdelen"></a>
+  <a href="#service"    class="sd"        data-s="service"    title="Service"></a>
+  <a href="#contact"    class="sd"        data-s="contact"    title="Contact"></a>
+</nav>
+
+<!-- ─── Hero ─── -->
+<section id="hero">
+  <video id="hero-vid" autoplay muted loop playsinline>
+    <source src="slagroom.mp4" type="video/mp4">
+  </video>
+  <div class="hero-overlay"></div>
+
+  <!-- Rotating badge -->
+  <div class="hero-badge-circle" id="hero-badge">
+    <svg viewBox="0 0 180 180" width="140" height="140" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <path id="cp" d="M 90,90 m -72,0 a 72,72 0 1,1 144,0 a 72,72 0 1,1 -144,0"/>
+      </defs>
+      <text font-size="10" fill="rgba(192,154,82,.75)" font-family="Inter,sans-serif" font-weight="300" letter-spacing="3.5">
+        <textPath href="#cp">SPECIALIST · HOENSBROEK · LIMBURG · EST. 2007 · </textPath>
+      </text>
+      <circle cx="90" cy="90" r="28" fill="none" stroke="rgba(192,154,82,.2)" stroke-width="1"/>
+    </svg>
+    <div class="hero-badge-center">N.</div>
   </div>
 
-  <!-- ─── Cursor ────────────────────────────────────────── -->
-  <div id="cursor-dot"></div>
-  <div id="cursor-ring"></div>
-
-  <!-- ─── Navigation ───────────────────────────────────── -->
-  <nav id="main-nav">
-    <a href="#" class="nav-logo">Notermans<em>.</em></a>
-    <ul class="nav-links">
-      <li><a href="#producten">Automaten</a></li>
-      <li><a href="#merken">Merken</a></li>
-      <li><a href="#onderdelen">Onderdelen</a></li>
-      <li><a href="#service">Service</a></li>
-    </ul>
-    <a href="#contact" class="nav-cta">Contact</a>
-  </nav>
-
-  <!-- ─── Hero ─────────────────────────────────────────── -->
-  <section id="hero">
-    <video id="hero-video" autoplay muted loop playsinline>
-      <source src="slagroom.mp4" type="video/mp4">
-    </video>
-    <div class="hero-overlay"></div>
-
-    <div class="hero-content">
-      <h1 class="hero-title">
-        <span class="line"><span>Slagroom</span></span>
-        <span class="line"><span>automaten</span></span>
-        <span class="line"><span>Specialist</span></span>
-      </h1>
-      <div class="hero-meta">
-        <div class="hero-badge">
-          <span>Est.</span> Hoensbroek, Limburg
-        </div>
-        <a href="#producten" class="hero-scroll">
-          <div class="hero-scroll-line"></div>
-          Ontdek
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── Marquee ──────────────────────────────────────── -->
-  <div class="marquee-wrap">
-    <div class="marquee-track">
-      <!-- Repeated twice for seamless loop -->
-      <span>Mussana</span><span class="dot">·</span>
-      <span>Sanomat</span><span class="dot">·</span>
-      <span>Nieuw</span><span class="dot">·</span>
-      <span>Gebruikt</span><span class="dot">·</span>
-      <span>2 Jaar Garantie</span><span class="dot">·</span>
-      <span>Revisie &amp; Service</span><span class="dot">·</span>
-      <span>Onderdelen</span><span class="dot">·</span>
-      <span>Nederland &amp; België</span><span class="dot">·</span>
-      <span>Mussana</span><span class="dot">·</span>
-      <span>Sanomat</span><span class="dot">·</span>
-      <span>Nieuw</span><span class="dot">·</span>
-      <span>Gebruikt</span><span class="dot">·</span>
-      <span>2 Jaar Garantie</span><span class="dot">·</span>
-      <span>Revisie &amp; Service</span><span class="dot">·</span>
-      <span>Onderdelen</span><span class="dot">·</span>
-      <span>Nederland &amp; België</span><span class="dot">·</span>
-    </div>
+  <div class="hero-bottom">
+    <div class="hero-label"><em>Est.</em> Hoensbroek, Limburg</div>
+    <a href="#featured" class="hero-scroll-line">Ontdek</a>
   </div>
 
-  <!-- ─── Manifesto ─────────────────────────────────────── -->
-  <section id="manifesto">
-    <div class="manifesto-inner">
-      <div class="manifesto-statement reveal">
-        Slagroom is geen<br>
-        detail —<br>
-        het is <em>het verschil</em><br>
-        op het bord.
-      </div>
-      <div class="manifesto-body">
-        <p class="reveal reveal-delay-1">
-          <strong>Notermans Slagroom-Automaten</strong> is dé specialist in professionele slagroomautomaten voor horeca, banketbakkerijen en IJssalons. Al meer dan 17 jaar leveren wij kwaliteitsmachines van de merken Mussana en Sanomat — nieuw én gereviseerd.
-        </p>
-        <p class="reveal reveal-delay-2">
-          Wij importeren gebruikte machines uit heel Europa, reviseren ze volledig tot als-nieuwe staat, en leveren ze persoonlijk bij u af. Inclusief installatie, instructie aan uw personeel en <strong>2 jaar volledige garantie</strong>.
-        </p>
-        <p class="reveal reveal-delay-3">
-          Geen postorderbedrijf. Geen tussenpersoon. Directe contact met de eigenaar, 7 dagen per week, van 08:00 tot 22:00.
-        </p>
-      </div>
-    </div>
-  </section>
+  <h1 class="hero-title" style="position:relative;z-index:2;padding:0 3rem 11rem;">
+    <span class="hl"><span id="ht1">SLAGROOM</span></span>
+    <span class="hl"><span>AUTOMATEN</span></span>
+    <span class="hl"><span>SPECIALIST</span></span>
+  </h1>
+</section>
 
-  <!-- ─── Stats ─────────────────────────────────────────── -->
-  <section id="stats">
-    <div class="stats-inner">
-      <div class="stat-item reveal">
-        <div class="stat-num"><span class="count" data-target="17">0</span><span class="accent">+</span></div>
-        <div class="stat-label">Jaar<br>Ervaring</div>
-      </div>
-      <div class="stat-item reveal reveal-delay-1">
-        <div class="stat-num"><span class="count" data-target="100">0</span><span class="accent">+</span></div>
-        <div class="stat-label">Machines<br>Op Voorraad</div>
-      </div>
-      <div class="stat-item reveal reveal-delay-2">
-        <div class="stat-num">2<span class="accent"> jr</span></div>
-        <div class="stat-label">Volledige<br>Garantie</div>
-      </div>
-      <div class="stat-item reveal reveal-delay-3">
-        <div class="stat-num">7<span class="accent">/7</span></div>
-        <div class="stat-label">Dagen per Week<br>Bereikbaar</div>
-      </div>
-    </div>
-  </section>
+<!-- ─── Marquee ─── -->
+<div class="marquee-wrap" aria-hidden="true">
+  <div class="marquee-track">
+    <span>Mussana</span><span class="sep">·</span>
+    <span>Sanomat</span><span class="sep">·</span>
+    <span>Nieuw</span><span class="sep">·</span>
+    <span>Gebruikt</span><span class="sep">·</span>
+    <span>2 Jaar Garantie</span><span class="sep">·</span>
+    <span>Revisie &amp; Service</span><span class="sep">·</span>
+    <span>Onderdelen</span><span class="sep">·</span>
+    <span>Nederland &amp; België</span><span class="sep">·</span>
+    <span>Mussana</span><span class="sep">·</span>
+    <span>Sanomat</span><span class="sep">·</span>
+    <span>Nieuw</span><span class="sep">·</span>
+    <span>Gebruikt</span><span class="sep">·</span>
+    <span>2 Jaar Garantie</span><span class="sep">·</span>
+    <span>Revisie &amp; Service</span><span class="sep">·</span>
+    <span>Onderdelen</span><span class="sep">·</span>
+    <span>Nederland &amp; België</span><span class="sep">·</span>
+  </div>
+</div>
 
-  <!-- ─── Products ──────────────────────────────────────── -->
-  <section id="producten">
-    <div class="producten-header reveal">
-      <div>
-        <div class="label">Ons aanbod</div>
-        <h2 class="producten-title">Nieuw &amp;<br>Gebruikt</h2>
+<!-- ─── Manifesto ─── -->
+<section id="manifesto">
+  <div class="mf-inner">
+    <div>
+      <span class="mf-quote-mark sr" aria-hidden="true">"</span>
+      <div class="mf-statement sr">
+        Slagroom is geen<br>detail —<br>
+        het is <em>het verschil</em><br>op het bord.
       </div>
-      <p class="producten-sub">
-        Of u nu op zoek bent naar een gloednieuwe machine of een perfect gereviseerd exemplaar — wij hebben het voor u.
+      <span class="mf-line"></span>
+    </div>
+    <div class="mf-body">
+      <p class="sr">
+        <strong>Notermans Slagroom-Automaten</strong> is dé specialist in professionele slagroomautomaten voor horeca, banketbakkerijen en IJssalons. Al meer dan 17 jaar leveren wij kwaliteitsmachines van de merken Mussana en Sanomat — nieuw én gereviseerd.
+      </p>
+      <p class="sr">
+        Wij importeren gebruikte machines uit heel Europa, reviseren ze volledig tot als-nieuwe staat en leveren ze persoonlijk bij u af — inclusief installatie, instructie aan uw personeel en <strong>2 jaar volledige garantie</strong>.
+      </p>
+      <p class="sr">
+        Geen postorderbedrijf. Geen tussenpersoon. Directe contact met de eigenaar, 7 dagen per week, van 08:00 tot 22:00.
       </p>
     </div>
-    <div class="products-grid">
-      <!-- Nieuw -->
-      <div class="product-card reveal">
-        <div class="product-card-bg product-card-bg-nieuw"></div>
-        <div class="product-card-tag">
-          <div class="label">01</div>
-        </div>
-        <div class="guarantee-badge">
-          <div class="num">2</div>
-          <div class="txt">jaar</div>
-          <div class="txt">garantie</div>
-        </div>
-        <div class="product-card-content">
-          <div class="product-card-eyebrow">Direct leverbaar</div>
-          <h3 class="product-card-title">Nieuwe<br>Automaten</h3>
-          <p class="product-card-desc">
-            Gloednieuwe slagroomautomaten van Mussana en Sanomat. Rechtstreeks geleverd, geïnstalleerd en inclusief instructie aan uw team.
-          </p>
-          <div class="product-card-models">
-            <span class="model-chip">Mussana 2L</span>
-            <span class="model-chip">Mussana 4L</span>
-            <span class="model-chip">Mussana 6L</span>
-            <span class="model-chip">Mussana 12L</span>
-            <span class="model-chip">Sanomat Euro Cream</span>
-            <span class="model-chip">Sanomat Favorit</span>
-          </div>
-          <a href="#contact" class="product-card-cta">Vraag prijsopgave aan</a>
-        </div>
-      </div>
+  </div>
+</section>
 
-      <!-- Gebruikt -->
-      <div class="product-card reveal reveal-delay-2">
-        <div class="product-card-bg product-card-bg-gebruikt"></div>
-        <div class="product-card-tag">
-          <div class="label">02</div>
-        </div>
-        <div class="guarantee-badge">
-          <div class="num">2</div>
-          <div class="txt">jaar</div>
-          <div class="txt">garantie</div>
-        </div>
-        <div class="product-card-content">
-          <div class="product-card-eyebrow">Volledig gereviseerd</div>
-          <h3 class="product-card-title">Gebruikte<br>Automaten</h3>
-          <p class="product-card-desc">
-            Bijna 100 gereviseerde machines op voorraad. Geïmporteerd uit heel Europa, volledig opgeknapt tot als-nieuwe staat — met dezelfde garantie als nieuw.
-          </p>
-          <div class="product-card-models">
-            <span class="model-chip">Mussana diverse</span>
-            <span class="model-chip">Sanomat diverse</span>
-            <span class="model-chip">2L t/m 12L</span>
-            <span class="model-chip">Als nieuw</span>
-          </div>
-          <a href="#contact" class="product-card-cta">Bekijk beschikbaar aanbod</a>
-        </div>
-      </div>
+<!-- ─── Stats ─── -->
+<section id="stats">
+  <div class="stats-grid">
+    <div class="stat sr">
+      <div class="stat-n"><span class="cnt" data-to="17">0</span><span class="acc">+</span></div>
+      <div class="stat-lbl">Jaar<br>Ervaring</div>
     </div>
-  </section>
-
-  <!-- ─── Brands ────────────────────────────────────────── -->
-  <section id="merken">
-    <div class="merken-inner">
-      <div class="merken-header reveal">
-        <div>
-          <div class="label merken-label">Specialist in</div>
-          <h2 class="merken-title">Onze<br>Merken</h2>
-        </div>
-      </div>
-      <div class="brands-grid">
-        <!-- Mussana -->
-        <div class="brand-card reveal">
-          <h3 class="brand-name">Muss<em>ana</em></h3>
-          <p class="brand-desc">
-            Het Duits-Zwitserse premium merk voor professionele slagroomautomaten. Bekend om uitzonderlijke bouw­kwaliteit, lange levensduur en een constante slagroomkwaliteit — de keuze van topbanketbakkers en restaurants.
-          </p>
-          <div class="brand-types">
-            <div class="brand-type-row">
-              <strong>Mussana 2 Liter</strong>
-              <span class="tag">Nieuw &amp; Gebruikt</span>
-            </div>
-            <div class="brand-type-row">
-              <strong>Mussana 4 Liter</strong>
-              <span class="tag">Nieuw &amp; Gebruikt</span>
-            </div>
-            <div class="brand-type-row">
-              <strong>Mussana 6 Liter</strong>
-              <span class="tag">Nieuw &amp; Gebruikt</span>
-            </div>
-            <div class="brand-type-row">
-              <strong>Mussana 12 Liter</strong>
-              <span class="tag">Nieuw &amp; Gebruikt</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sanomat -->
-        <div class="brand-card reveal reveal-delay-2">
-          <h3 class="brand-name">Sano<em>mat</em></h3>
-          <p class="brand-desc">
-            Het Scandinavische merk dat al tientallen jaren de standaard zet voor betrouwbare slagroomautomaten. Compact, efficiënt en makkelijk te bedienen — ideaal voor drukke horecaomgevingen en IJssalons.
-          </p>
-          <div class="brand-types">
-            <div class="brand-type-row">
-              <strong>Sanomat Euro Cream 2L</strong>
-              <span class="tag">Nieuw &amp; Gebruikt</span>
-            </div>
-            <div class="brand-type-row">
-              <strong>Sanomat Favorit 2L</strong>
-              <span class="tag">Nieuw &amp; Gebruikt</span>
-            </div>
-            <div class="brand-type-row">
-              <strong>Sanomat S-Serie</strong>
-              <span class="tag">Gebruikt</span>
-            </div>
-            <div class="brand-type-row">
-              <strong>Sanomat Diverse</strong>
-              <span class="tag">Op aanvraag</span>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="stat sr">
+      <div class="stat-n"><span class="cnt" data-to="100">0</span><span class="acc">+</span></div>
+      <div class="stat-lbl">Machines<br>Op Voorraad</div>
     </div>
-  </section>
-
-  <!-- ─── Parts ─────────────────────────────────────────── -->
-  <section id="onderdelen">
-    <div class="onderdelen-inner">
-      <div class="onderdelen-header reveal">
-        <div>
-          <div class="label">Technische service</div>
-          <h2 class="onderdelen-title">Onderdelen<br>&amp; Revisie</h2>
-        </div>
-        <p class="onderdelen-note">
-          Uitgebreid assortiment originele en alternatieve onderdelen voor Mussana en Sanomat. Neem contact op via <a href="mailto:slagroommachine@gmail.com" style="color:var(--gold)">slagroommachine@gmail.com</a> voor beschikbaarheid en prijzen.
-        </p>
-      </div>
-      <div class="parts-grid">
-        <div class="part-item reveal">
-          <div class="part-brand">Mussana / Sanomat</div>
-          <div class="part-name">Pakket&shy;sets</div>
-        </div>
-        <div class="part-item reveal reveal-delay-1">
-          <div class="part-brand">Mussana / Sanomat</div>
-          <div class="part-name">Schrapers</div>
-        </div>
-        <div class="part-item reveal reveal-delay-2">
-          <div class="part-brand">Mussana</div>
-          <div class="part-name">Motor&shy;huizen</div>
-        </div>
-        <div class="part-item reveal reveal-delay-3">
-          <div class="part-brand">Mussana / Sanomat</div>
-          <div class="part-name">Klop&shy;systemen</div>
-        </div>
-        <div class="part-item reveal">
-          <div class="part-brand">Mussana</div>
-          <div class="part-name">Magneet&shy;spiralen</div>
-        </div>
-        <div class="part-item reveal reveal-delay-1">
-          <div class="part-brand">Mussana</div>
-          <div class="part-name">Lucht&shy;regelkleppen</div>
-        </div>
-        <div class="part-item reveal reveal-delay-2">
-          <div class="part-brand">Mussana</div>
-          <div class="part-name">Garneer&shy;bussen</div>
-        </div>
-        <div class="part-item reveal reveal-delay-3">
-          <div class="part-brand">Mussana</div>
-          <div class="part-name">Temperatuur&shy;sensoren</div>
-        </div>
-        <div class="part-item reveal">
-          <div class="part-brand">Mussana</div>
-          <div class="part-name">Print&shy;platen</div>
-        </div>
-        <div class="part-item reveal reveal-delay-1">
-          <div class="part-brand">Sanomat</div>
-          <div class="part-name">S-Serie Onderdelen</div>
-        </div>
-        <div class="part-item reveal reveal-delay-2">
-          <div class="part-brand">Mussana / Sanomat</div>
-          <div class="part-name">Afdichtings&shy;sets</div>
-        </div>
-        <div class="part-item reveal reveal-delay-3">
-          <div class="part-brand">Op aanvraag</div>
-          <div class="part-name">Overige Onderdelen</div>
-        </div>
-      </div>
+    <div class="stat sr">
+      <div class="stat-n">2<span class="acc"> jr</span></div>
+      <div class="stat-lbl">Volledige<br>Garantie</div>
     </div>
-  </section>
-
-  <!-- ─── Service ───────────────────────────────────────── -->
-  <section id="service">
-    <div class="service-inner">
-      <div class="service-header reveal">
-        <div class="label">Persoonlijke service</div>
-        <h2 class="service-title">Van bestelling<br>tot werkvloer</h2>
-      </div>
-      <div class="service-grid">
-        <div class="service-item reveal">
-          <div class="service-num">01</div>
-          <span class="service-icon">🚚</span>
-          <div class="service-name">Levering aan huis</div>
-          <p class="service-desc">
-            Wij leveren uw machine persoonlijk bij u af — in heel Nederland, België en delen van Duitsland. Geen transportbedrijf, maar de eigenaar zelf.
-          </p>
-          <span class="service-highlight">NL · BE · DE</span>
-        </div>
-        <div class="service-item reveal reveal-delay-2">
-          <div class="service-num">02</div>
-          <span class="service-icon">⚙️</span>
-          <div class="service-name">Installatie &amp; Instructie</div>
-          <p class="service-desc">
-            Na levering installeren wij de machine op locatie en geven wij persoonlijk instructie aan u en uw medewerkers. U bent direct klaar om te werken.
-          </p>
-          <span class="service-highlight">Inclusief bij elke machine</span>
-        </div>
-        <div class="service-item reveal reveal-delay-4">
-          <div class="service-num">03</div>
-          <span class="service-icon">📞</span>
-          <div class="service-name">Support 7 Dagen</div>
-          <p class="service-desc">
-            Vragen vanuit de werkvloer? Wij zijn bereikbaar van maandag t/m zondag, van 08:00 tot 22:00. Gratis support is inbegrepen — voor altijd.
-          </p>
-          <span class="service-highlight">08:00 – 22:00 · 7 dagen</span>
-        </div>
-      </div>
+    <div class="stat sr">
+      <div class="stat-n">7<span class="acc">/7</span></div>
+      <div class="stat-lbl">Dagen Per Week<br>Bereikbaar</div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ─── Trust Strip ───────────────────────────────────── -->
-  <div class="trust-strip reveal">
-    <div class="trust-item"><span class="ico">★★★★★</span> 5 Sterren Marktplaats</div>
-    <div class="trust-item"><span class="ico">⏱</span> 17 Jaar Actief</div>
-    <div class="trust-item"><span class="ico">✓</span> 2 Jaar Volledige Garantie</div>
-    <div class="trust-item"><span class="ico">🔒</span> Volledig Gereviseerd</div>
+<!-- ─── Featured / Horizontal scroll ─── -->
+<section id="featured">
+  <div class="feat-intro sr">
+    <div class="feat-intro-left">
+      <div class="lbl">Ons Aanbod</div>
+      <h2 class="feat-title">Machines &amp;<br>Merken</h2>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1rem">
+      <div class="feat-hint">
+        <span>Scroll horizontaal</span>
+        <span class="feat-hint-arrow">→</span>
+      </div>
+      <p class="feat-sub">Van gloednieuw tot gereviseerd — ontdek ons complete aanbod en onze topmerken.</p>
+    </div>
   </div>
 
-  <!-- ─── Contact ───────────────────────────────────────── -->
-  <section id="contact">
-    <div class="contact-inner">
-      <div class="contact-left reveal">
-        <div class="label contact-label">Neem contact op</div>
-        <h2 class="contact-title">Klaar om<br>te <em>starten?</em></h2>
-        <div class="contact-info">
-          <div class="contact-info-item">
-            <div class="contact-info-ico">📍</div>
-            <div class="contact-info-content">
-              <div class="contact-info-lbl">Adres</div>
-              <div class="contact-info-val">Sint Josephstraat 19<br>6431 XH Hoensbroek</div>
-            </div>
+  <div class="feat-progress sr">
+    <div class="feat-progress-bar"><div class="feat-progress-fill" id="feat-fill"></div></div>
+    <div class="feat-progress-num"><em id="feat-cur">01</em> / 04</div>
+  </div>
+
+  <div class="feat-pin">
+    <div class="feat-track" id="feat-track">
+
+      <!-- Card 1: Nieuw -->
+      <div class="feat-card fc-nieuw tilt">
+        <div class="feat-card-bg"></div>
+        <div class="feat-card-overlay"></div>
+        <div class="feat-card-num" aria-hidden="true">01</div>
+        <div class="feat-card-tag"><span class="feat-tag">Direct leverbaar</span></div>
+        <div class="feat-guarantee"><span class="gn">2</span><span class="gl">jaar</span><span class="gl">garantie</span></div>
+        <div class="feat-card-content">
+          <div class="feat-card-eye">Nieuwe Automaten</div>
+          <h3 class="feat-card-title">Gloednieuw<br>&amp; Gegarandeerd</h3>
+          <p class="feat-card-desc">Rechtstreeks geleverd, geïnstalleerd en inclusief persoonlijke instructie aan uw team. De nieuwste modellen van Mussana en Sanomat.</p>
+          <div class="feat-chips">
+            <span class="chip">Mussana 2L</span>
+            <span class="chip">Mussana 4L</span>
+            <span class="chip">Mussana 6L</span>
+            <span class="chip">Mussana 12L</span>
+            <span class="chip">Sanomat Euro Cream</span>
+            <span class="chip">Sanomat Favorit</span>
           </div>
-          <div class="contact-info-item">
-            <div class="contact-info-ico">📱</div>
-            <div class="contact-info-content">
-              <div class="contact-info-lbl">Jos Notermans</div>
-              <div class="contact-info-val"><a href="tel:+31611404806">06 11 40 48 06</a></div>
-            </div>
-          </div>
-          <div class="contact-info-item">
-            <div class="contact-info-ico">📱</div>
-            <div class="contact-info-content">
-              <div class="contact-info-lbl">Leroy Notermans</div>
-              <div class="contact-info-val"><a href="tel:+31655457715">06 55 45 77 15</a></div>
-            </div>
-          </div>
-          <div class="contact-info-item">
-            <div class="contact-info-ico">✉</div>
-            <div class="contact-info-content">
-              <div class="contact-info-lbl">E-mail</div>
-              <div class="contact-info-val"><a href="mailto:slagroommachine@gmail.com">slagroommachine@gmail.com</a></div>
-            </div>
-          </div>
-        </div>
-        <div class="contact-availability">
-          <div class="contact-availability-title">Bereikbaarheid</div>
-          <div class="contact-availability-val">Ma – Zo, 08:00 – 22:00</div>
+          <a href="#contact" class="feat-cta magnetic">Prijsopgave aanvragen</a>
         </div>
       </div>
 
-      <div class="contact-right reveal reveal-delay-3">
-        <form class="contact-form" onsubmit="handleForm(event)">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="name">Naam</label>
-              <input class="form-input" id="name" type="text" placeholder="Uw naam" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="bedrijf">Bedrijf</label>
-              <input class="form-input" id="bedrijf" type="text" placeholder="Bedrijfsnaam">
-            </div>
+      <!-- Card 2: Gebruikt -->
+      <div class="feat-card fc-gebruikt tilt">
+        <div class="feat-card-bg"></div>
+        <div class="feat-card-overlay"></div>
+        <div class="feat-card-num" aria-hidden="true">02</div>
+        <div class="feat-card-tag"><span class="feat-tag">Volledig gereviseerd</span></div>
+        <div class="feat-guarantee"><span class="gn">2</span><span class="gl">jaar</span><span class="gl">garantie</span></div>
+        <div class="feat-card-content">
+          <div class="feat-card-eye">Gebruikte Automaten</div>
+          <h3 class="feat-card-title">Bijna 100<br>Op Voorraad</h3>
+          <p class="feat-card-desc">Geïmporteerd uit heel Europa, volledig opgeknapt tot als-nieuwe staat. Dezelfde garantie als nieuw — tegen een fractie van de prijs.</p>
+          <div class="feat-chips">
+            <span class="chip">Mussana Diverse</span>
+            <span class="chip">Sanomat Diverse</span>
+            <span class="chip">2L t/m 12L</span>
+            <span class="chip">Als Nieuw</span>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="email">E-mail</label>
-            <input class="form-input" id="email" type="email" placeholder="uw@email.nl" required>
+          <a href="#contact" class="feat-cta magnetic">Bekijk beschikbaar aanbod</a>
+        </div>
+      </div>
+
+      <!-- Card 3: Mussana -->
+      <div class="feat-card fc-mussana tilt">
+        <div class="feat-card-bg"></div>
+        <div class="feat-card-overlay"></div>
+        <div class="feat-card-num" aria-hidden="true">03</div>
+        <div class="feat-card-content">
+          <div class="feat-card-eye">Merk 01</div>
+          <h3 class="feat-brand-name">Muss<em>ana</em></h3>
+          <p class="feat-card-desc">Het Duits-Zwitserse premium merk — de keuze van topbanketbakkers en restaurants. Uitzonderlijke bouwkwaliteit en constante slagroomkwaliteit.</p>
+          <div class="feat-brand-list">
+            <div class="feat-brand-row"><strong>Mussana 2 Liter</strong><span class="bt">Nieuw &amp; Gebruikt</span></div>
+            <div class="feat-brand-row"><strong>Mussana 4 Liter</strong><span class="bt">Nieuw &amp; Gebruikt</span></div>
+            <div class="feat-brand-row"><strong>Mussana 6 Liter</strong><span class="bt">Nieuw &amp; Gebruikt</span></div>
+            <div class="feat-brand-row"><strong>Mussana 12 Liter</strong><span class="bt">Nieuw &amp; Gebruikt</span></div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="telefoon">Telefoon</label>
-            <input class="form-input" id="telefoon" type="tel" placeholder="+31 6 ···">
+          <a href="#contact" class="feat-cta magnetic" style="margin-top:1.5rem">Vraag Mussana aan</a>
+        </div>
+      </div>
+
+      <!-- Card 4: Sanomat -->
+      <div class="feat-card fc-sanomat tilt">
+        <div class="feat-card-bg"></div>
+        <div class="feat-card-overlay"></div>
+        <div class="feat-card-num" aria-hidden="true">04</div>
+        <div class="feat-card-content">
+          <div class="feat-card-eye">Merk 02</div>
+          <h3 class="feat-brand-name">Sano<em>mat</em></h3>
+          <p class="feat-card-desc">Het Scandinavische merk dat de standaard zet voor betrouwbaarheid. Compact, efficiënt en makkelijk te bedienen — ideaal voor drukke horecaomgevingen.</p>
+          <div class="feat-brand-list">
+            <div class="feat-brand-row"><strong>Sanomat Euro Cream 2L</strong><span class="bt">Nieuw &amp; Gebruikt</span></div>
+            <div class="feat-brand-row"><strong>Sanomat Favorit 2L</strong><span class="bt">Nieuw &amp; Gebruikt</span></div>
+            <div class="feat-brand-row"><strong>Sanomat S-Serie</strong><span class="bt">Gebruikt</span></div>
+            <div class="feat-brand-row"><strong>Sanomat Diverse</strong><span class="bt">Op aanvraag</span></div>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="interesse">Interesse</label>
-            <input class="form-input" id="interesse" type="text" placeholder="Nieuw / Gebruikt / Onderdelen / Reparatie">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="bericht">Bericht</label>
-            <textarea class="form-textarea" id="bericht" rows="4" placeholder="Uw vraag of wens…"></textarea>
-          </div>
-          <button type="submit" class="form-btn">Verstuur bericht</button>
-        </form>
+          <a href="#contact" class="feat-cta magnetic" style="margin-top:1.5rem">Vraag Sanomat aan</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─── Onderdelen ─── -->
+<section id="onderdelen">
+  <div class="ond-inner">
+    <div class="ond-header sr">
+      <div>
+        <div class="lbl">Technische service</div>
+        <h2 class="ond-title">Onderdelen<br>&amp; Revisie</h2>
+      </div>
+      <p class="ond-note">
+        Uitgebreid assortiment onderdelen voor Mussana en Sanomat. Neem contact op via <a href="mailto:slagroommachine@gmail.com">slagroommachine@gmail.com</a> voor beschikbaarheid en prijzen.
+      </p>
+    </div>
+    <div class="parts-grid">
+      <div class="part sr"><div class="part-brand">Mussana / Sanomat</div><div class="part-name">Pakket&shy;sets</div></div>
+      <div class="part sr"><div class="part-brand">Mussana / Sanomat</div><div class="part-name">Schrapers</div></div>
+      <div class="part sr"><div class="part-brand">Mussana</div><div class="part-name">Motor&shy;huizen</div></div>
+      <div class="part sr"><div class="part-brand">Mussana / Sanomat</div><div class="part-name">Klop&shy;systemen</div></div>
+      <div class="part sr"><div class="part-brand">Mussana</div><div class="part-name">Magneet&shy;spiralen</div></div>
+      <div class="part sr"><div class="part-brand">Mussana</div><div class="part-name">Lucht&shy;regelkleppen</div></div>
+      <div class="part sr"><div class="part-brand">Mussana</div><div class="part-name">Garneer&shy;bussen</div></div>
+      <div class="part sr"><div class="part-brand">Mussana</div><div class="part-name">Temperatuur&shy;sensoren</div></div>
+      <div class="part sr"><div class="part-brand">Mussana</div><div class="part-name">Print&shy;platen</div></div>
+      <div class="part sr"><div class="part-brand">Sanomat</div><div class="part-name">S-Serie Onderdelen</div></div>
+      <div class="part sr"><div class="part-brand">Mussana / Sanomat</div><div class="part-name">Afdichtings&shy;sets</div></div>
+      <div class="part sr"><div class="part-brand">Op aanvraag</div><div class="part-name">Overige Onderdelen</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Service ─── -->
+<section id="service">
+  <div class="svc-inner">
+    <div class="svc-header sr">
+      <div class="lbl">Persoonlijke service</div>
+      <h2 class="svc-title">Van bestelling<br>tot werkvloer</h2>
+    </div>
+    <div class="svc-grid">
+      <div class="svc-item sr">
+        <div class="svc-num">01</div>
+        <span class="svc-ico">🚚</span>
+        <div class="svc-name">Levering aan huis</div>
+        <p class="svc-desc">Wij leveren uw machine persoonlijk bij u af — heel Nederland, België en delen van Duitsland. Geen transportbedrijf, maar de eigenaar zelf.</p>
+        <span class="svc-badge">NL · BE · DE</span>
+      </div>
+      <div class="svc-item sr">
+        <div class="svc-num">02</div>
+        <span class="svc-ico">⚙️</span>
+        <div class="svc-name">Installatie &amp; Instructie</div>
+        <p class="svc-desc">Na levering installeren wij de machine op locatie en geven wij persoonlijk instructie aan u en uw medewerkers. U bent direct klaar om te werken.</p>
+        <span class="svc-badge">Inclusief bij elke machine</span>
+      </div>
+      <div class="svc-item sr">
+        <div class="svc-num">03</div>
+        <span class="svc-ico">📞</span>
+        <div class="svc-name">Support 7 Dagen</div>
+        <p class="svc-desc">Vragen vanuit de werkvloer? Wij zijn bereikbaar van maandag t/m zondag, van 08:00 tot 22:00. Gratis support is voor altijd inbegrepen.</p>
+        <span class="svc-badge">08:00 – 22:00 · 7 Dagen</span>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ─── Footer ────────────────────────────────────────── -->
-  <footer>
-    <div class="footer-inner">
-      <div class="footer-top">
-        <div class="footer-brand">
-          <span class="footer-logo">Notermans<em>.</em></span>
-          <p class="footer-tagline">
-            De specialist in professionele slagroomautomaten. Meer dan 17 jaar ervaring, persoonlijke service en 2 jaar garantie op elke machine.
-          </p>
+<!-- ─── Trust ─── -->
+<div class="trust" aria-hidden="true">
+  <div class="trust-track">
+    <span class="trust-item"><span class="ti">★★★★★</span>5 Sterren Marktplaats</span>
+    <span class="trust-item"><span class="ti">⏱</span>17 Jaar Actief</span>
+    <span class="trust-item"><span class="ti">✓</span>2 Jaar Volledige Garantie</span>
+    <span class="trust-item"><span class="ti">🔒</span>Volledig Gereviseerd</span>
+    <span class="trust-item"><span class="ti">🚚</span>Levering In Heel Nederland</span>
+    <span class="trust-item"><span class="ti">★★★★★</span>5 Sterren Marktplaats</span>
+    <span class="trust-item"><span class="ti">⏱</span>17 Jaar Actief</span>
+    <span class="trust-item"><span class="ti">✓</span>2 Jaar Volledige Garantie</span>
+    <span class="trust-item"><span class="ti">🔒</span>Volledig Gereviseerd</span>
+    <span class="trust-item"><span class="ti">🚚</span>Levering In Heel Nederland</span>
+  </div>
+</div>
+
+<!-- ─── Contact ─── -->
+<section id="contact">
+  <div class="ct-inner">
+    <div class="sr">
+      <div class="lbl">Neem contact op</div>
+      <h2 class="ct-title">Klaar om<br>te <em>starten?</em></h2>
+      <div class="ct-info">
+        <div class="ct-row">
+          <div class="ct-ico">📍</div>
+          <div><div class="ct-lbl">Adres</div><div class="ct-val">Sint Josephstraat 19<br>6431 XH Hoensbroek</div></div>
         </div>
-        <div>
-          <div class="footer-col-title">Automaten</div>
-          <ul class="footer-links">
-            <li><a href="#producten">Nieuwe machines</a></li>
-            <li><a href="#producten">Gebruikte machines</a></li>
-            <li><a href="#merken">Mussana</a></li>
-            <li><a href="#merken">Sanomat</a></li>
-          </ul>
+        <div class="ct-row">
+          <div class="ct-ico">📱</div>
+          <div><div class="ct-lbl">Jos Notermans</div><div class="ct-val"><a href="tel:+31611404806">06 11 40 48 06</a></div></div>
         </div>
-        <div>
-          <div class="footer-col-title">Onderdelen</div>
-          <ul class="footer-links">
-            <li><a href="#onderdelen">Mussana onderdelen</a></li>
-            <li><a href="#onderdelen">Sanomat onderdelen</a></li>
-            <li><a href="#onderdelen">Revisie service</a></li>
-            <li><a href="#contact">Onderdelen aanvragen</a></li>
-          </ul>
+        <div class="ct-row">
+          <div class="ct-ico">📱</div>
+          <div><div class="ct-lbl">Leroy Notermans</div><div class="ct-val"><a href="tel:+31655457715">06 55 45 77 15</a></div></div>
         </div>
-        <div>
-          <div class="footer-col-title">Contact</div>
-          <ul class="footer-links">
-            <li><a href="tel:+31611404806">06 11 40 48 06</a></li>
-            <li><a href="tel:+31655457715">06 55 45 77 15</a></li>
-            <li><a href="mailto:slagroommachine@gmail.com">slagroommachine@gmail.com</a></li>
-            <li><a href="#contact">Stuur een bericht</a></li>
-          </ul>
+        <div class="ct-row">
+          <div class="ct-ico">✉</div>
+          <div><div class="ct-lbl">E-mail</div><div class="ct-val"><a href="mailto:slagroommachine@gmail.com">slagroommachine@gmail.com</a></div></div>
         </div>
       </div>
-      <div class="footer-bottom">
-        <span>© 2024 Notermans Slagroom-Automaten V.O.F. — Hoensbroek</span>
-        <div class="footer-social">
-          <a href="https://www.facebook.com/p/Notermans-Slagroomautomaten-100054327036358/" target="_blank" rel="noopener">Facebook</a>
-          <a href="https://www.marktplaats.nl/u/notermans-slagroom-automaten/13694458/" target="_blank" rel="noopener">Marktplaats</a>
-          <a href="https://nl.linkedin.com/in/jos-notermans-b35877199" target="_blank" rel="noopener">LinkedIn</a>
-        </div>
+      <div class="ct-avail">
+        <div class="ct-avail-lbl">Bereikbaarheid</div>
+        <div class="ct-avail-val">Ma – Zo, 08:00 – 22:00</div>
       </div>
     </div>
-  </footer>
 
-  <script>
-    /* ─── Preloader ────────────────────────────────────────── */
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        document.getElementById('preloader').classList.add('done');
-      }, 1600);
+    <div class="sr">
+      <form class="ct-form" id="ct-form">
+        <div class="form-row">
+          <div class="fg"><label class="fl" for="f-name">Naam</label><input class="fi" id="f-name" type="text" placeholder="Uw naam" required></div>
+          <div class="fg"><label class="fl" for="f-bedrijf">Bedrijf</label><input class="fi" id="f-bedrijf" type="text" placeholder="Bedrijfsnaam"></div>
+        </div>
+        <div class="fg"><label class="fl" for="f-email">E-mail</label><input class="fi" id="f-email" type="email" placeholder="uw@email.nl" required></div>
+        <div class="fg"><label class="fl" for="f-tel">Telefoon</label><input class="fi" id="f-tel" type="tel" placeholder="+31 6 ···"></div>
+        <div class="fg"><label class="fl" for="f-int">Interesse</label><input class="fi" id="f-int" type="text" placeholder="Nieuw / Gebruikt / Onderdelen / Reparatie"></div>
+        <div class="fg"><label class="fl" for="f-msg">Bericht</label><textarea class="ft" id="f-msg" rows="4" placeholder="Uw vraag of wens…"></textarea></div>
+        <button type="submit" class="fb magnetic">
+          <span>Verstuur bericht</span><span class="fa">→</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Footer ─── -->
+<footer>
+  <div class="ft-inner">
+    <div class="ft-top">
+      <div>
+        <a href="#" class="ft-logo">Notermans<em>.</em></a>
+        <p class="ft-tag">De specialist in professionele slagroomautomaten. Meer dan 17 jaar ervaring, persoonlijke service en 2 jaar garantie op elke machine.</p>
+      </div>
+      <div>
+        <div class="ft-col-title">Automaten</div>
+        <ul class="ft-list">
+          <li><a href="#featured">Nieuwe machines</a></li>
+          <li><a href="#featured">Gebruikte machines</a></li>
+          <li><a href="#featured">Mussana</a></li>
+          <li><a href="#featured">Sanomat</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="ft-col-title">Onderdelen</div>
+        <ul class="ft-list">
+          <li><a href="#onderdelen">Mussana onderdelen</a></li>
+          <li><a href="#onderdelen">Sanomat onderdelen</a></li>
+          <li><a href="#onderdelen">Revisie service</a></li>
+          <li><a href="#contact">Aanvragen</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="ft-col-title">Contact</div>
+        <ul class="ft-list">
+          <li><a href="tel:+31611404806">06 11 40 48 06</a></li>
+          <li><a href="tel:+31655457715">06 55 45 77 15</a></li>
+          <li><a href="mailto:slagroommachine@gmail.com">slagroommachine@gmail.com</a></li>
+          <li><a href="#contact">Stuur een bericht</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ft-bottom">
+      <span>© 2024 Notermans Slagroom-Automaten V.O.F. — Hoensbroek</span>
+      <div class="ft-social">
+        <a href="https://www.facebook.com/p/Notermans-Slagroomautomaten-100054327036358/" target="_blank" rel="noopener">Facebook</a>
+        <a href="https://www.marktplaats.nl/u/notermans-slagroom-automaten/13694458/" target="_blank" rel="noopener">Marktplaats</a>
+        <a href="https://nl.linkedin.com/in/jos-notermans-b35877199" target="_blank" rel="noopener">LinkedIn</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ── Wait for GSAP + Lenis ── */
+window.addEventListener('load', () => {
+
+  /* ── Preloader ── */
+  let prog = 0;
+  const preEl   = document.getElementById('preloader');
+  const preCount= document.getElementById('pre-count');
+  const interval= setInterval(() => {
+    prog = Math.min(prog + Math.random() * 18, 100);
+    preCount.textContent = Math.round(prog) + '%';
+    if (prog >= 100) {
+      clearInterval(interval);
+      setTimeout(() => preEl.classList.add('out'), 300);
+    }
+  }, 80);
+
+  /* ── Custom cursor ── */
+  const dot   = document.getElementById('cur-dot');
+  const ring  = document.getElementById('cur-ring');
+  const label = document.getElementById('cur-label');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    dot.style.left = mx + 'px'; dot.style.top = my + 'px';
+    label.style.left = mx + 'px'; label.style.top = my + 'px';
+  });
+
+  (function lerpRing() {
+    rx += (mx - rx) * .11; ry += (my - ry) * .11;
+    ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+    requestAnimationFrame(lerpRing);
+  })();
+
+  document.querySelectorAll('a, button, .chip, .part, .stat, .svc-item').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      document.body.classList.add('ch');
+      label.textContent = el.dataset.cursor || '';
     });
-
-    /* ─── Custom Cursor ────────────────────────────────────── */
-    const dot  = document.getElementById('cursor-dot');
-    const ring = document.getElementById('cursor-ring');
-
-    let mouseX = 0, mouseY = 0;
-    let ringX  = 0, ringY  = 0;
-
-    document.addEventListener('mousemove', e => {
-      mouseX = e.clientX; mouseY = e.clientY;
-      dot.style.left  = mouseX + 'px';
-      dot.style.top   = mouseY + 'px';
+    el.addEventListener('mouseleave', () => {
+      document.body.classList.remove('ch');
+      label.textContent = '';
     });
+  });
+  document.querySelectorAll('.feat-card').forEach(el => {
+    el.addEventListener('mouseenter', () => document.body.classList.add('cv'));
+    el.addEventListener('mouseleave', () => document.body.classList.remove('cv'));
+  });
 
-    (function animateRing() {
-      ringX += (mouseX - ringX) * 0.12;
-      ringY += (mouseY - ringY) * 0.12;
-      ring.style.left = ringX + 'px';
-      ring.style.top  = ringY + 'px';
-      requestAnimationFrame(animateRing);
-    })();
+  /* ── Progress bar ── */
+  const progBar = document.getElementById('progress');
+  window.addEventListener('scroll', () => {
+    const pct = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+    progBar.style.width = pct + '%';
+  }, { passive: true });
 
-    document.querySelectorAll('a, button, .product-card, .brand-card, .stat-item, .part-item, .service-item, .model-chip').forEach(el => {
-      el.addEventListener('mouseenter', () => document.body.classList.add('cursor-hover'));
-      el.addEventListener('mouseleave', () => document.body.classList.remove('cursor-hover'));
+  /* ── Nav stuck ── */
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('stuck', window.scrollY > 50);
+  }, { passive: true });
+
+  /* ── Mobile menu ── */
+  const burger = document.getElementById('burger');
+  const mobileMenu = document.getElementById('mobile-menu');
+  burger.addEventListener('click', () => {
+    burger.classList.toggle('open');
+    mobileMenu.classList.toggle('open');
+    document.body.style.overflow = mobileMenu.classList.contains('open') ? 'hidden' : '';
+  });
+  document.querySelectorAll('.mob-link').forEach(a => {
+    a.addEventListener('click', () => {
+      burger.classList.remove('open');
+      mobileMenu.classList.remove('open');
+      document.body.style.overflow = '';
     });
+  });
 
-    /* ─── Nav scroll effect ────────────────────────────────── */
-    const nav = document.getElementById('main-nav');
-    window.addEventListener('scroll', () => {
-      nav.classList.toggle('scrolled', window.scrollY > 60);
-    }, { passive: true });
-
-    /* ─── Reveal on scroll ─────────────────────────────────── */
-    const reveals = document.querySelectorAll('.reveal');
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('in');
-          observer.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.12 });
-    reveals.forEach(el => observer.observe(el));
-
-    /* ─── Count-up animation ───────────────────────────────── */
-    const counters = document.querySelectorAll('.count');
-    const countObserver = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (!entry.isIntersecting) return;
-        const el     = entry.target;
-        const target = +el.dataset.target;
-        const dur    = 1500;
-        const step   = dur / target;
-        let current  = 0;
-        const timer  = setInterval(() => {
-          current++;
-          el.textContent = current;
-          if (current >= target) clearInterval(timer);
-        }, step);
-        countObserver.unobserve(el);
-      });
-    }, { threshold: 0.5 });
-    counters.forEach(c => countObserver.observe(c));
-
-    /* ─── Smooth anchor scroll ─────────────────────────────── */
-    document.querySelectorAll('a[href^="#"]').forEach(a => {
-      a.addEventListener('click', e => {
-        const target = document.querySelector(a.getAttribute('href'));
-        if (target) {
-          e.preventDefault();
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      });
+  /* ── Section dots ── */
+  const sections = ['hero','manifesto','stats','featured','onderdelen','service','contact'];
+  const dots = document.querySelectorAll('.sd');
+  const ioSections = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      dots.forEach(d => d.classList.remove('active'));
+      const d = document.querySelector(`.sd[data-s="${e.target.id}"]`);
+      if (d) d.classList.add('active');
     });
+  }, { threshold: .4 });
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) ioSections.observe(el);
+  });
 
-    /* ─── Contact form ─────────────────────────────────────── */
-    function handleForm(e) {
+  /* ── Scroll reveals (fallback if GSAP not loaded) ── */
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold: .1 });
+  document.querySelectorAll('.sr').forEach(el => io.observe(el));
+
+  /* ── Manifesto line ── */
+  const mfLine = document.querySelector('.mf-line');
+  const mfIO = new IntersectionObserver(e => {
+    if (e[0].isIntersecting) { mfLine.classList.add('in'); mfIO.disconnect(); }
+  }, { threshold: .5 });
+  if (mfLine) mfIO.observe(mfLine);
+
+  /* ── Count-up ── */
+  const cntIO = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      const el = e.target, to = +el.dataset.to;
+      const dur = 1800, step = dur / to;
+      let n = 0;
+      const t = setInterval(() => {
+        n++;
+        el.textContent = n;
+        if (n >= to) clearInterval(t);
+      }, step);
+      cntIO.unobserve(el);
+    });
+  }, { threshold: .5 });
+  document.querySelectorAll('.cnt').forEach(c => cntIO.observe(c));
+
+  /* ── Hero badge fade in ── */
+  const badge = document.getElementById('hero-badge');
+  if (badge) {
+    setTimeout(() => {
+      badge.style.opacity = '1';
+      badge.style.transition = 'opacity 1s ease';
+    }, 900);
+  }
+
+  /* ── Text scramble on hero title ── */
+  const ht1 = document.getElementById('ht1');
+  if (ht1) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const original = 'SLAGROOM';
+    let frame = 0;
+    function scramble() {
+      if (frame > 24) { ht1.textContent = original; return; }
+      ht1.textContent = original.split('').map((c, i) =>
+        i < frame / 3 ? c : chars[Math.floor(Math.random() * chars.length)]
+      ).join('');
+      frame++;
+      requestAnimationFrame(scramble);
+    }
+    setTimeout(scramble, 600);
+  }
+
+  /* ── Hero parallax on mouse ── */
+  const heroTitle = document.querySelector('.hero-title');
+  document.addEventListener('mousemove', e => {
+    if (!heroTitle) return;
+    const xPct = (e.clientX / window.innerWidth - .5) * 12;
+    const yPct = (e.clientY / window.innerHeight - .5) * 6;
+    heroTitle.style.transform = `translate(${xPct * .4}px, ${yPct * .4}px)`;
+  });
+
+  /* ── Hero video parallax ── */
+  const vid = document.getElementById('hero-vid');
+  window.addEventListener('scroll', () => {
+    if (window.scrollY < window.innerHeight && vid) {
+      vid.style.transform = `translateY(${window.scrollY * .28}px)`;
+    }
+  }, { passive: true });
+
+  /* ── Smooth scroll ── */
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const t = document.querySelector(a.getAttribute('href'));
+      if (!t) return;
       e.preventDefault();
-      const btn = e.target.querySelector('.form-btn');
-      btn.textContent = 'Verstuurd ✓';
-      btn.style.background = '#4a9a6a';
-      setTimeout(() => {
-        btn.textContent = 'Verstuur bericht';
-        btn.style.background = '';
-        e.target.reset();
-      }, 3000);
+      const top = t.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top, behavior: 'smooth' });
+    });
+  });
+
+  /* ── GSAP enhanced animations (if loaded) ── */
+  if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+    gsap.registerPlugin(ScrollTrigger);
+
+    /* Lenis smooth scroll + GSAP integration */
+    let lenis;
+    if (typeof Lenis !== 'undefined') {
+      lenis = new Lenis({ duration: 1.35, easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)) });
+      lenis.on('scroll', ScrollTrigger.update);
+      gsap.ticker.add(time => lenis.raf(time * 1000));
+      gsap.ticker.lagSmoothing(0);
     }
 
-    /* ─── Parallax video ───────────────────────────────────── */
-    const heroVideo = document.getElementById('hero-video');
-    window.addEventListener('scroll', () => {
-      const scroll = window.scrollY;
-      if (scroll < window.innerHeight) {
-        heroVideo.style.transform = `scale(1) translateY(${scroll * 0.25}px)`;
-      }
-    }, { passive: true });
-  </script>
+    /* Manifesto statement — word-level reveal (safe with inner HTML) */
+    const mfSt = document.querySelector('.mf-statement');
+    if (mfSt) {
+      /* Walk only text nodes so we never break <em> or <br> tags */
+      const wrapWords = (node) => {
+        if (node.nodeType === 3) {
+          const frag = document.createDocumentFragment();
+          node.textContent.split(/(\s+)/).forEach(part => {
+            if (/^\s+$/.test(part)) {
+              frag.appendChild(document.createTextNode(part));
+            } else if (part) {
+              const s = document.createElement('span');
+              s.className = 'split-word';
+              s.style.cssText = 'display:inline-block;overflow:hidden;vertical-align:bottom;';
+              const inner = document.createElement('span');
+              inner.style.cssText = 'display:inline-block;';
+              inner.textContent = part;
+              s.appendChild(inner);
+              frag.appendChild(s);
+            }
+          });
+          node.parentNode.replaceChild(frag, node);
+        } else if (node.nodeType === 1 && node.nodeName !== 'SCRIPT') {
+          Array.from(node.childNodes).forEach(wrapWords);
+        }
+      };
+      wrapWords(mfSt);
+      gsap.from(mfSt.querySelectorAll('.split-word > span'), {
+        y: '105%', opacity: 0, stagger: .04, duration: .75,
+        ease: 'power4.out',
+        scrollTrigger: { trigger: mfSt, start: 'top 82%' }
+      });
+    }
+
+    /* Stats count with GSAP */
+    document.querySelectorAll('.cnt').forEach(el => {
+      const to = +el.dataset.to;
+      gsap.from({ val: 0 }, {
+        val: 0, duration: 1.8, ease: 'power2.out',
+        scrollTrigger: { trigger: el, start: 'top 80%', once: true },
+        onUpdate() { el.textContent = Math.round(this._targets[0].val || 0); },
+        onStart() {
+          gsap.to({ val: 0 }, {
+            val: to, duration: 1.8, ease: 'power2.out',
+            onUpdate() { el.textContent = Math.round(this._targets[0].val); },
+          });
+        }
+      });
+    });
+
+    /* ── Horizontal scroll for featured section ── */
+    const track = document.getElementById('feat-track');
+    const fill  = document.getElementById('feat-fill');
+    const curNum= document.getElementById('feat-cur');
+    const cards = gsap.utils.toArray('.feat-card');
+
+    if (track && cards.length) {
+      const totalX = () => track.scrollWidth - window.innerWidth;
+
+      gsap.to(track, {
+        x: () => -totalX(),
+        ease: 'none',
+        scrollTrigger: {
+          trigger: '#featured .feat-pin',
+          start: 'top top',
+          end: () => `+=${totalX()}`,
+          pin: true,
+          scrub: 1.2,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+          onUpdate: self => {
+            const pct = self.progress * 100;
+            if (fill) fill.style.width = pct + '%';
+            const idx = Math.min(Math.ceil(self.progress * cards.length) || 1, cards.length);
+            if (curNum) curNum.textContent = String(idx).padStart(2,'0');
+          }
+        }
+      });
+
+      /* stagger cards in on first enter */
+      gsap.from(cards, {
+        opacity: 0, scale: .95, stagger: .12, duration: 1,
+        ease: 'power3.out',
+        scrollTrigger: { trigger: '#featured', start: 'top 80%', once: true }
+      });
+    }
+
+    /* Parts staggered reveal */
+    gsap.from('.part', {
+      opacity: 0, y: 30, stagger: .06, duration: .7, ease: 'power3.out',
+      scrollTrigger: { trigger: '.parts-grid', start: 'top 85%' }
+    });
+
+    /* Service items */
+    gsap.from('.svc-item', {
+      opacity: 0, y: 40, stagger: .15, duration: .9, ease: 'power3.out',
+      scrollTrigger: { trigger: '.svc-grid', start: 'top 80%' }
+    });
+  }
+
+  /* ── 3D tilt on cards ── */
+  document.querySelectorAll('.tilt').forEach(card => {
+    card.addEventListener('mousemove', e => {
+      const r = card.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width  - .5;
+      const y = (e.clientY - r.top)  / r.height - .5;
+      card.style.transform = `perspective(1000px) rotateY(${x * 5}deg) rotateX(${-y * 5}deg) scale3d(1.01,1.01,1.01)`;
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'perspective(1000px) rotateY(0) rotateX(0) scale3d(1,1,1)';
+      card.style.transition = 'transform .6s cubic-bezier(0.19,1,0.22,1)';
+    });
+    card.addEventListener('mouseenter', () => {
+      card.style.transition = 'transform .1s ease';
+    });
+  });
+
+  /* ── Magnetic buttons ── */
+  document.querySelectorAll('.magnetic').forEach(el => {
+    el.addEventListener('mousemove', e => {
+      const r = el.getBoundingClientRect();
+      const x = (e.clientX - r.left - r.width  / 2) * .28;
+      const y = (e.clientY - r.top  - r.height / 2) * .28;
+      el.style.transform = `translate(${x}px, ${y}px)`;
+    });
+    el.addEventListener('mouseleave', () => {
+      el.style.transform = '';
+      el.style.transition = 'transform .5s cubic-bezier(0.19,1,0.22,1)';
+    });
+    el.addEventListener('mouseenter', () => {
+      el.style.transition = 'transform .15s ease';
+    });
+  });
+
+  /* ── Contact form ── */
+  document.getElementById('ct-form')?.addEventListener('submit', e => {
+    e.preventDefault();
+    const btn = e.target.querySelector('.fb span');
+    btn.textContent = 'Verstuurd ✓';
+    e.target.querySelector('.fb').style.background = '#3d8a5e';
+    setTimeout(() => {
+      btn.textContent = 'Verstuur bericht';
+      e.target.querySelector('.fb').style.background = '';
+      e.target.reset();
+    }, 3500);
+  });
+
+}); // end load
+</script>
+
 </body>
 </html>
